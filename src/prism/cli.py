@@ -7,6 +7,7 @@ from pathlib import Path
 from . import config
 from . import decompile
 from . import detection
+from . import extractor
 from . import i18n
 
 
@@ -77,9 +78,16 @@ def cmd_decompile(root: Path | None = None) -> int:
     return 1
 
 
-def cmd_index(_root: Path | None = None) -> int:
-    """Placeholder: requiere extractor y SQLite (Fase 2)."""
-    print(i18n.t("cli.index.not_implemented"), file=sys.stderr)
+def cmd_index(root: Path | None = None) -> int:
+    """Indexa el código en workspace/decompiled en la base SQLite (FTS5)."""
+    root = root or config.get_project_root()
+    success, payload = extractor.run_index(root)
+    if success:
+        classes, methods = payload
+        print(i18n.t("cli.index.success", classes=classes, methods=methods))
+        return 0
+    key = f"cli.index.{payload}"
+    print(i18n.t(key), file=sys.stderr)
     return 1
 
 
