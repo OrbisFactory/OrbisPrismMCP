@@ -4,7 +4,7 @@
 
 > "Deconstruct the engine, illuminate the API."
 
-**Orbis Prism** is a set of advanced engineering tools designed for the Hytale modding ecosystem. It decomposes the official server (`HytaleServer.jar`), isolates its core logic, and provides an AI-assisted intelligent query interface (MCP) for developers.
+**Orbis Prism** is a set of tools designed for the Hytale modding ecosystem. It decomposes the official server (`HytaleServer.jar`), isolates its core logic, and provides an AI-assisted intelligent query interface (MCP) for developers.
 
 > **⚠️ Important notice**
 >
@@ -25,11 +25,11 @@
 
 Orbis Prism shows messages, help, and errors in **Spanish** or **English**. The language is stored in the project configuration.
 
-| Action | Command |
-|--------|---------|
-| List available languages | `python main.py lang list` |
-| Switch to English | `python main.py lang set en` |
-| Switch to Spanish | `python main.py lang set es` |
+| Action                   | Command                      |
+| ------------------------ | ---------------------------- |
+| List available languages | `python main.py lang list`   |
+| Switch to English        | `python main.py lang set en` |
+| Switch to Spanish        | `python main.py lang set es` |
 
 After running `lang set <code>`, subsequent CLI messages will use that language.
 
@@ -85,22 +85,22 @@ The command to run when getting started is **`ctx init`** (or `context init`). I
 
 The recommended **initial** command is **`python main.py ctx init`** (or `context init`): it detects the JAR if needed, decompiles, prunes, and indexes. You can use `ctx` as a shorthand for `context`.
 
-| Command | Description |
-|--------|-------------|
-| `python main.py ctx init [release\|prerelease\|--all]` | **Initial command.** Full pipeline: detects JAR if missing, decompiles (JADX), prunes, and indexes to SQLite. |
-| `python main.py ctx detect` | Detects HytaleServer.jar (and release/prerelease if present) and saves configuration to `.prism.json`. |
-| `python main.py ctx clean <db\|build\|all>` | Clean: `db` (databases only), `build` (decompiled output), `all` (everything). |
-| `python main.py ctx reset` | Resets the project to zero (removes DB, build, and `.prism.json`). |
-| `python main.py ctx decompile [release\|prerelease\|--all]` | JADX only → `workspace/decompiled_raw/<version>`. |
-| `python main.py ctx prune [release\|prerelease\|--all]` | Prune: copies only `com.hypixel.hytale` from raw to decompiled. |
-| `python main.py ctx db [release\|prerelease\|--all]` | Indexes the code into SQLite (FTS5). |
-| `python main.py ctx list` | Lists indexed contexts (release/prerelease) and which is active (*). |
-| `python main.py ctx use <release\|prerelease>` | Sets the active context. |
-| `python main.py query <term> [release\|prerelease]` | Searches the indexed DB (FTS5). |
-| `python main.py mcp [--http] [--port N] [--host DIR]` | Starts the MCP server. stdio by default; with `--http` exposes HTTP on the port (default 8000). |
-| `python main.py lang list` | Lists available languages. |
-| `python main.py lang set <code>` | Changes the language (e.g. `lang set en`). |
-| `python main.py config_impl set game_path <path>` | Sets the game path (root folder or JAR). Launcher → Settings → Open Directory. |
+| Command                                                     | Description                                                                                                   |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `python main.py ctx init [release\|prerelease\|--all]`      | **Initial command.** Full pipeline: detects JAR if missing, decompiles (JADX), prunes, and indexes to SQLite. |
+| `python main.py ctx detect`                                 | Detects HytaleServer.jar (and release/prerelease if present) and saves configuration to `.prism.json`.        |
+| `python main.py ctx clean <db\|build\|all>`                 | Clean: `db` (databases only), `build` (decompiled output), `all` (everything).                                |
+| `python main.py ctx reset`                                  | Resets the project to zero (removes DB, build, and `.prism.json`).                                            |
+| `python main.py ctx decompile [release\|prerelease\|--all]` | JADX only → `workspace/decompiled_raw/<version>`.                                                             |
+| `python main.py ctx prune [release\|prerelease\|--all]`     | Prune: copies only `com.hypixel.hytale` from raw to decompiled.                                               |
+| `python main.py ctx db [release\|prerelease\|--all]`        | Indexes the code into SQLite (FTS5).                                                                          |
+| `python main.py ctx list`                                   | Lists indexed contexts (release/prerelease) and which is active (\*).                                         |
+| `python main.py ctx use <release\|prerelease>`              | Sets the active context.                                                                                      |
+| `python main.py query <term> [release\|prerelease]`         | Searches the indexed DB (FTS5).                                                                               |
+| `python main.py mcp [--http] [--port N] [--host DIR]`       | Starts the MCP server. stdio by default; with `--http` exposes HTTP on the port (default 8000).               |
+| `python main.py lang list`                                  | Lists available languages.                                                                                    |
+| `python main.py lang set <code>`                            | Changes the language (e.g. `lang set en`).                                                                    |
+| `python main.py config_impl set game_path <path>`           | Sets the game path (root folder or JAR). Launcher → Settings → Open Directory.                                |
 
 For **detailed CLI documentation** (arguments, flows, code structure, and description of each subcommand), see [CLI documentation](src/prism/entrypoints/cli/README.md).
 
@@ -135,6 +135,7 @@ By default the server uses **stdio transport** (no port is opened). Your client 
 
    - **cwd** is required so the server finds `.prism.json` and `workspace/db`.
    - **env.PRISM_WORKSPACE** (optional): if set, the server uses this path as the project root even when the process is started from another directory.
+
 3. Reload the Cursor window (Ctrl+Shift+P → "Developer: Reload Window") so it picks up the `prism_search` tool.
 
 ### HTTP / Docker mode

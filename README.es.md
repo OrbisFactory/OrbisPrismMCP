@@ -2,7 +2,7 @@
 
 > "Deconstruct the engine, illuminate the API."
 
-**Orbis Prism** es un conjunto de herramientas de ingeniería avanzada diseñado para el ecosistema de modding de Hytale. Su objetivo es descomponer el servidor oficial (`HytaleServer.jar`), aislar su núcleo lógico y proporcionar una interfaz de consulta inteligente (MCP) asistida por IA para desarrolladores.
+**Orbis Prism** es un conjunto de herramientas diseñado para el ecosistema de modding de Hytale. Su objetivo es descomponer el servidor oficial (`HytaleServer.jar`), aislar su núcleo lógico y proporcionar una interfaz de consulta inteligente (MCP) asistida por IA para desarrolladores.
 
 > **⚠️ Aviso importante**
 >
@@ -10,7 +10,6 @@
 > - **Es necesario tener instalada previamente una versión oficial del juego (Hytale).** Esta herramienta **no incluye ningún código fuente ni binario del juego**: solo localiza tu instalación, descompila el servidor que ya tienes y genera índices para consulta. Sin una instalación válida de Hytale (por ejemplo vía el launcher oficial), Orbis Prism no puede funcionar.
 
 ---
-
 
 ## ✨ Características Principales
 
@@ -24,17 +23,18 @@
 
 Orbis Prism muestra mensajes, ayuda y errores en **español** o **inglés**. El idioma se guarda en la configuración del proyecto.
 
-| Acción | Comando |
-|--------|---------|
-| Ver idiomas disponibles | `python main.py lang list` |
-| Cambiar a inglés | `python main.py lang set en` |
-| Cambiar a español | `python main.py lang set es` |
+| Acción                  | Comando                      |
+| ----------------------- | ---------------------------- |
+| Ver idiomas disponibles | `python main.py lang list`   |
+| Cambiar a inglés        | `python main.py lang set en` |
+| Cambiar a español       | `python main.py lang set es` |
 
 Tras ejecutar `lang set <código>`, los siguientes mensajes del CLI usarán ese idioma.
 
 ## 🚀 Inicio Rápido
 
 ### Requisitos
+
 - **Instalación oficial de Hytale** (launcher y juego). Orbis Prism no distribuye código ni binarios del juego; trabaja sobre tu instalación.
 - **Python 3.11+**
 - **Java 25** (para compatibilidad con el servidor de Hytale)
@@ -45,11 +45,13 @@ Tras ejecutar `lang set <código>`, los siguientes mensajes del CLI usarán ese 
 El comando que debes ejecutar al empezar es **`ctx init`** (o `context init`). Detecta el JAR de Hytale, descompila, poda e indexa la API en SQLite. Si el JAR no está detectado, ejecuta antes **`ctx detect`** para que Orbis Prism localice `HytaleServer.jar` y guarde la configuración en `.prism.json`.
 
 ### Dónde se detecta HytaleServer.jar
+
 - **Windows:** Por defecto se usa la instalación oficial. Ejecuta `python main.py ctx detect` para detectarla.
 - **Ruta manual:** Solo necesitas la **carpeta raíz del juego** (no el JAR). Ejecuta `python main.py config_impl set game_path <ruta>` con esa carpeta; Orbis Prism detectará automáticamente release y pre-release si existen.
   - **Cómo obtener la ruta:** Abre el **Launcher de Hytale** → **Settings** → **Open Directory** → copia la ruta (ej. `C:\Users\...\AppData\Roaming\Hytale`).
 
 ### Instalación
+
 1. Clona el repositorio:
 
    ```bash
@@ -81,22 +83,22 @@ El comando que debes ejecutar al empezar es **`ctx init`** (o `context init`). D
 
 El comando **inicial** recomendado es **`python main.py ctx init`** (o `context init`): detecta el JAR si hace falta, descompila, poda e indexa. Puedes usar `ctx` como abreviatura de `context`.
 
-| Comando | Descripción |
-|--------|-------------|
-| `python main.py ctx init [release\|prerelease\|--all]` | **Comando inicial.** Pipeline completo: detecta JAR si falta, descompila (JADX), poda e indexa en SQLite. |
-| `python main.py ctx detect` | Detecta HytaleServer.jar (y release/prerelease si existen) y guarda la configuración en `.prism.json`. |
-| `python main.py ctx clean <db\|build\|all>` | Limpia: `db` (solo bases de datos), `build` (decompilado), `all` (todo). |
-| `python main.py ctx reset` | Deja el proyecto a cero (borra DB, build y `.prism.json`). |
-| `python main.py ctx decompile [release\|prerelease\|--all]` | Solo JADX → `workspace/decompiled_raw/<version>`. |
-| `python main.py ctx prune [release\|prerelease\|--all]` | Poda: copia solo `com.hypixel.hytale` de raw a decompiled. |
-| `python main.py ctx db [release\|prerelease\|--all]` | Indexa el código en SQLite (FTS5). |
-| `python main.py ctx list` | Lista los contextos indexados (release/prerelease) y cuál está activo (*). |
-| `python main.py ctx use <release\|prerelease>` | Establece el contexto activo. |
-| `python main.py query <término> [release\|prerelease]` | Busca en la DB indexada (FTS5). |
-| `python main.py mcp [--http] [--port N] [--host DIR]` | Inicia el servidor MCP. Por defecto stdio; con `--http` expone HTTP en el puerto (default 8000). |
-| `python main.py lang list` | Lista idiomas disponibles. |
-| `python main.py lang set <código>` | Cambia el idioma (ej. `lang set en`). |
-| `python main.py config_impl set game_path <ruta>` | Establece la ruta del juego (carpeta raíz o JAR). Launcher → Settings → Open Directory. |
+| Comando                                                     | Descripción                                                                                               |
+| ----------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `python main.py ctx init [release\|prerelease\|--all]`      | **Comando inicial.** Pipeline completo: detecta JAR si falta, descompila (JADX), poda e indexa en SQLite. |
+| `python main.py ctx detect`                                 | Detecta HytaleServer.jar (y release/prerelease si existen) y guarda la configuración en `.prism.json`.    |
+| `python main.py ctx clean <db\|build\|all>`                 | Limpia: `db` (solo bases de datos), `build` (decompilado), `all` (todo).                                  |
+| `python main.py ctx reset`                                  | Deja el proyecto a cero (borra DB, build y `.prism.json`).                                                |
+| `python main.py ctx decompile [release\|prerelease\|--all]` | Solo JADX → `workspace/decompiled_raw/<version>`.                                                         |
+| `python main.py ctx prune [release\|prerelease\|--all]`     | Poda: copia solo `com.hypixel.hytale` de raw a decompiled.                                                |
+| `python main.py ctx db [release\|prerelease\|--all]`        | Indexa el código en SQLite (FTS5).                                                                        |
+| `python main.py ctx list`                                   | Lista los contextos indexados (release/prerelease) y cuál está activo (\*).                               |
+| `python main.py ctx use <release\|prerelease>`              | Establece el contexto activo.                                                                             |
+| `python main.py query <término> [release\|prerelease]`      | Busca en la DB indexada (FTS5).                                                                           |
+| `python main.py mcp [--http] [--port N] [--host DIR]`       | Inicia el servidor MCP. Por defecto stdio; con `--http` expone HTTP en el puerto (default 8000).          |
+| `python main.py lang list`                                  | Lista idiomas disponibles.                                                                                |
+| `python main.py lang set <código>`                          | Cambia el idioma (ej. `lang set en`).                                                                     |
+| `python main.py config_impl set game_path <ruta>`           | Establece la ruta del juego (carpeta raíz o JAR). Launcher → Settings → Open Directory.                   |
 
 Para una **documentación más detallada del CLI** (argumentos, flujos, estructura del código y descripción de cada subcomando), ver [Documentación del CLI](src/prism/entrypoints/cli/README.md).
 
@@ -131,6 +133,7 @@ Por defecto el servidor usa **transporte stdio** (no abre ningún puerto). Tu cl
 
    - **cwd** es necesario para que el servidor encuentre `.prism.json` y `workspace/db`.
    - **env.PRISM_WORKSPACE** (opcional): si está definido, el servidor usa esta ruta como raíz del proyecto aunque el proceso se lance desde otro directorio.
+
 3. Recarga la ventana de Cursor (Ctrl+Shift+P → "Developer: Reload Window") para que detecte el tool `prism_search`.
 
 ### Modo HTTP / Docker
