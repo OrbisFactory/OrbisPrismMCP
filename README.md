@@ -85,6 +85,8 @@ El comando **inicial** recomendado es **`python main.py ctx init`** (o `context 
 | `python main.py lang set <código>` | Cambia el idioma (ej. `lang set en`). |
 | `python main.py config_impl set game_path <ruta>` | Establece la ruta del juego (carpeta raíz o JAR). Launcher → Settings → Open Directory. |
 
+Para una **documentación más detallada del CLI** (argumentos, flujos, estructura del código y descripción de cada subcomando), ver [Documentación del CLI](src/prism/entrypoints/cli/README.md).
+
 ## 📁 Estructura del proyecto
 
 - **`/src`**: Código fuente del orquestador (Python).
