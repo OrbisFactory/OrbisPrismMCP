@@ -18,6 +18,10 @@ ENV_JADX_PATH = "JADX_PATH"
 ENV_LANG = "PRISM_LANG"
 # Raíz del proyecto cuando se lanza desde MCP/Docker (evita depender solo de cwd)
 ENV_WORKSPACE = "PRISM_WORKSPACE"
+# Ruta de DB desacoplada: directorio donde están las DB o ruta exacta por versión (volumen/solo lectura)
+ENV_DB_DIR = "PRISM_DB_DIR"
+ENV_DB_PATH_RELEASE = "PRISM_DB_PATH_RELEASE"
+ENV_DB_PATH_PRERELEASE = "PRISM_DB_PATH_PRERELEASE"
 
 # Nombres de archivo de configuración (raíz del proyecto)
 CONFIG_FILENAME = ".prism.json"
@@ -156,7 +160,10 @@ def get_decompiled_raw_dir(root: Path | None = None, version: str = "release") -
 
 
 def get_db_dir(root: Path | None = None) -> Path:
-    """Directorio de la base de datos SQLite."""
+    """Directorio de la base de datos SQLite. Si PRISM_DB_DIR está definida, usa esa ruta."""
+    env_dir = os.environ.get(ENV_DB_DIR)
+    if env_dir and env_dir.strip():
+        return Path(env_dir.strip()).resolve()
     return get_workspace_dir(root) / "db"
 
 
@@ -164,19 +171,33 @@ def get_db_path(root: Path | None = None, version: str | None = None) -> Path:
     """
     Ruta de la DB. Si version es None, usa active_server de config (default 'release').
     Compatibilidad: si no hay active_server y existe prism_api.db, se devuelve esa.
+    Si PRISM_DB_PATH_RELEASE/PRISM_DB_PATH_PRERELEASE están definidas, se usa esa ruta
+    para esa versión. Si PRISM_DB_DIR está definida, las DB están en ese directorio
+    con nombre prism_api_{version}.db. Así se puede apuntar a un volumen o DB de solo lectura.
     """
     root = root or get_project_root()
+    # Resolver versión efectiva si no se pasó
+    if version is None:
+        cfg = load_config(root)
+        active = cfg.get(CONFIG_KEY_ACTIVE_SERVER)
+        if active in VALID_SERVER_VERSIONS:
+            version = active
+        else:
+            db_dir_default = get_workspace_dir(root) / "db"
+            legacy = db_dir_default / "prism_api.db"
+            if legacy.exists():
+                return legacy
+            version = "release"
+    # Override por ruta exacta de esa versión
+    if version == "release":
+        env_path = os.environ.get(ENV_DB_PATH_RELEASE)
+    else:
+        env_path = os.environ.get(ENV_DB_PATH_PRERELEASE)
+    if env_path and env_path.strip():
+        return Path(env_path.strip()).resolve()
+    # Override por directorio común (mismo nombre de archivo)
     db_dir = get_db_dir(root)
-    if version is not None:
-        return db_dir / f"prism_api_{version}.db"
-    cfg = load_config(root)
-    active = cfg.get(CONFIG_KEY_ACTIVE_SERVER)
-    if active in VALID_SERVER_VERSIONS:
-        return db_dir / f"prism_api_{active}.db"
-    legacy = db_dir / "prism_api.db"
-    if legacy.exists():
-        return legacy
-    return db_dir / "prism_api_release.db"
+    return db_dir / f"prism_api_{version}.db"
 
 
 def get_logs_dir(root: Path | None = None) -> Path:

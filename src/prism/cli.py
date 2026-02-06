@@ -307,12 +307,11 @@ def cmd_index(root: Path | None = None, version: str | None = None) -> int:
 def cmd_context_list(root: Path | None = None) -> int:
     """Lista las versiones indexadas (DB existente) y cuál está activa."""
     root = root or config.get_project_root()
-    db_dir = config.get_db_dir(root)
     cfg = config.load_config(root)
     active = cfg.get(config.CONFIG_KEY_ACTIVE_SERVER) or "release"
     installed = []
     for v in config.VALID_SERVER_VERSIONS:
-        if (db_dir / f"prism_api_{v}.db").is_file():
+        if config.get_db_path(root, v).is_file():
             installed.append(v)
     print(i18n.t("cli.context.list.title"))
     if not installed:
@@ -335,7 +334,7 @@ def cmd_context_use(version_str: str, root: Path | None = None) -> int:
     cfg = config.load_config(root)
     cfg[config.CONFIG_KEY_ACTIVE_SERVER] = version
     config.save_config(cfg, root)
-    if not (config.get_db_dir(root) / f"prism_api_{version}.db").is_file():
+    if not config.get_db_path(root, version).is_file():
         print(i18n.t("cli.context.use.not_indexed", version=version), file=sys.stderr)
     print(i18n.t("cli.context.use.success", version=version))
     return 0
