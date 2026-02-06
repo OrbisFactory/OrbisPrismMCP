@@ -24,7 +24,39 @@
 
 ### Instalación
 1. Clona el repositorio:
+
    ```bash
    git clone https://github.com/SamuelCastrillon/orbis-prism-project.git
    cd orbis-prism
    
+3. Install dependencies:
+   
+   ```bash
+   pip install -r requirements.txt
+
+5. Run the setup assistant:
+   
+   ```bash
+   python main.py init
+
+   
+## 🛠 CLI Commands
+- `prism decompile`: Starts the extraction and pruning of the source code.
+
+- `prism index`: Analyzes .java files and populates the search index.
+
+- `prism serve`: Launches the MCP bridge to connect your favorite AI.
+
+## 📁 Project Structure
+`/src`: Python orchestrator source code.
+
+`/workspace/decompiled`: The clean Hytale "Core" (Java 25).
+
+`/workspace/db`: `prism_api.db` SQLite index.
+
+`/bin`: Support binaries and external tools.
+
+## 📜 License
+This project is licensed under the MIT License. See the `LICENSE` file for more details.
+
+Disclaimer: Orbis Prism is an independent development tool and is not affiliated with Hypixel Studios.
