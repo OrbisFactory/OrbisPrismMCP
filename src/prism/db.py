@@ -118,3 +118,23 @@ def get_stats(conn: sqlite3.Connection) -> tuple[int, int]:
     classes = conn.execute("SELECT COUNT(*) AS n FROM classes").fetchone()["n"]
     methods = conn.execute("SELECT COUNT(*) AS n FROM methods").fetchone()["n"]
     return classes, methods
+
+
+def search_fts(
+    conn: sqlite3.Connection,
+    query_term: str,
+    limit: int = 50,
+) -> list[sqlite3.Row]:
+    """
+    Busca en la tabla FTS5 api_fts. query_term se pasa a MATCH (sintaxis FTS5).
+    Devuelve lista de filas (package, class_name, kind, method_name, returns, params).
+    """
+    if not query_term or not query_term.strip():
+        return []
+    term = query_term.strip()
+    # Evitar caracteres que rompen FTS5; para una palabra simple no hace falta
+    cur = conn.execute(
+        "SELECT package, class_name, kind, method_name, returns, params FROM api_fts WHERE api_fts MATCH ? LIMIT ?",
+        (term, limit),
+    )
+    return cur.fetchall()

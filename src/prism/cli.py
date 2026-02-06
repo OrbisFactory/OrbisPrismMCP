@@ -5,10 +5,12 @@ import sys
 from pathlib import Path
 
 from . import config
+from . import db
 from . import decompile
 from . import detection
 from . import extractor
 from . import i18n
+from . import prune
 
 # Flag para "todas las versiones" en build, decompile, index
 VERSION_FLAG_ALL = ("--all", "-a")
@@ -99,11 +101,38 @@ def cmd_decompile(root: Path | None = None, version: str | None = None) -> int:
     return 1
 
 
+def cmd_query(root: Path | None = None, query_term: str = "", version: str = "release", limit: int = 30) -> int:
+    """Ejecuta una búsqueda FTS5 en la DB de la versión indicada e imprime resultados."""
+    root = root or config.get_project_root()
+    if not query_term or not query_term.strip():
+        print(i18n.t("cli.query.usage"), file=sys.stderr)
+        return 1
+    if version not in config.VALID_SERVER_VERSIONS:
+        print(i18n.t("cli.context.use.invalid"), file=sys.stderr)
+        return 1
+    db_path = config.get_db_path(root, version)
+    if not db_path.is_file():
+        print(i18n.t("cli.query.no_db", version=version), file=sys.stderr)
+        return 1
+    try:
+        conn = db.get_connection(db_path)
+        rows = db.search_fts(conn, query_term.strip(), limit=limit)
+        conn.close()
+    except Exception as e:
+        print(i18n.t("cli.query.error", msg=str(e)), file=sys.stderr)
+        return 1
+    print(i18n.t("cli.query.result_count", count=len(rows), term=query_term, version=version))
+    for r in rows:
+        # r es sqlite3.Row: package, class_name, kind, method_name, returns, params
+        print(f"  {r['package']}.{r['class_name']} ({r['kind']}) :: {r['method_name']}({r['params']}) -> {r['returns']}")
+    return 0
+
+
 def cmd_prune(root: Path | None = None, version: str | None = None) -> int:
     """Ejecuta solo la poda (raw → decompiled). version=None → todas las que tengan raw; 'release'|'prerelease' → esa. Por defecto: release."""
     root = root or config.get_project_root()
     versions = None if version is None else [version]
-    success, err = decompile.run_prune_only(root, versions=versions)
+    success, err = prune.run_prune_only(root, versions=versions)
     if success:
         if version:
             print(i18n.t("cli.prune.success", version=version))
@@ -302,6 +331,7 @@ def print_help() -> None:
     print(fmt.format("decompile [release|prerelease|--all|-a]") + i18n.t("cli.help.decompile_desc"))
     print(fmt.format("prune [release|prerelease|--all|-a]") + i18n.t("cli.help.prune_desc"))
     print(fmt.format("index [release|prerelease|--all|-a]") + i18n.t("cli.help.index_desc"))
+    print(fmt.format("query <término> [release|prerelease]") + i18n.t("cli.help.query_desc"))
     print(fmt.format("mcp") + i18n.t("cli.help.mcp_desc"))
     print()
     print(fmt.format("context list") + i18n.t("cli.help.context_list_desc"))
@@ -354,6 +384,16 @@ def main() -> int:
             print(i18n.t("cli.context.use.invalid"), file=sys.stderr)
             return 1
         return cmd_index(root, version=version_arg)
+    if subcommand == "query":
+        if len(args) < 2:
+            print(i18n.t("cli.query.usage"), file=sys.stderr)
+            return 1
+        query_term = args[1]
+        version = args[2] if len(args) > 2 else "release"
+        if version not in config.VALID_SERVER_VERSIONS:
+            print(i18n.t("cli.context.use.invalid"), file=sys.stderr)
+            return 1
+        return cmd_query(root, query_term=query_term, version=version)
     if subcommand == "prune":
         version_arg, invalid = _parse_version_arg(args, 1)
         if invalid:
