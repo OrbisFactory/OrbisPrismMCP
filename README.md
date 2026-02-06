@@ -4,9 +4,13 @@
 
 **Orbis Prism** es un conjunto de herramientas de ingeniería avanzada diseñado para el ecosistema de modding de Hytale. Su objetivo es descomponer el servidor oficial (`HytaleServer.jar`), aislar su núcleo lógico y proporcionar una interfaz de consulta inteligente (MCP) asistida por IA para desarrolladores.
 
-
+> **⚠️ Aviso importante**
+>
+> - **Orbis Prism es una herramienta de desarrollo independiente y no está afiliada a Hypixel Studios.**
+> - **Es necesario tener instalada previamente una versión oficial del juego (Hytale).** Esta herramienta **no incluye ningún código fuente ni binario del juego**: solo localiza tu instalación, descompila el servidor que ya tienes y genera índices para consulta. Sin una instalación válida de Hytale (por ejemplo vía el launcher oficial), Orbis Prism no puede funcionar.
 
 ---
+
 
 ## ✨ Características Principales
 
@@ -18,9 +22,10 @@
 ## 🚀 Inicio Rápido
 
 ### Requisitos
+- **Instalación oficial de Hytale** (launcher y juego). Orbis Prism no distribuye código ni binarios del juego; trabaja sobre tu instalación.
 - **Python 3.11+**
-- **Java 25** (Para compatibilidad con el servidor de Hytale)
-- **JADX** (Incluido en `/bin` o disponible en el PATH)
+- **Java 25** (para compatibilidad con el servidor de Hytale)
+- **JADX** (incluido en `/bin` o disponible en el PATH)
 
 ### Comando inicial (primera vez)
 
@@ -51,7 +56,13 @@ El comando que debes ejecutar al empezar es **`ctx init`** (o `context init`). D
    python main.py ctx init
    ```
 
-   Si el JAR no se encuentra, ejecuta antes `python main.py ctx detect` y luego `python main.py ctx init`.
+   **Si el JAR no se encuentra:**
+   - Prueba primero `python main.py ctx detect` (por si la instalación está en una ruta que se detecta automáticamente).
+   - **Para indicar la ruta manualmente:** usa la carpeta raíz del juego (no el JAR). En el **Launcher de Hytale** → **Settings** → **Open Directory** copia esa ruta y ejecuta:
+     ```bash
+     python main.py config_impl set game_path "C:\ruta\a\tu\carpeta\Hytale"
+     ```
+     Luego vuelve a ejecutar `python main.py ctx init`.
 
 ## 🛠 Comandos CLI
 
@@ -109,9 +120,11 @@ Por defecto el servidor usa **transporte stdio** (no abre ningún puerto). Tu cl
 
 ### Modo HTTP / Docker
 
+> **Nota:** Este modo está en fase de construcción; la interfaz y el comportamiento pueden cambiar.
+
 Para exponer el servidor por red (por ejemplo en un contenedor):
 
-- **CLI:** `prism mcp --http [--port 8000] [--host 0.0.0.0]`. Por defecto escucha en `0.0.0.0:8000` (todas las interfaces).
+- **CLI:** `python main.py mcp --http [--port 8000] [--host 0.0.0.0]`. Por defecto escucha en `0.0.0.0:8000` (todas las interfaces).
 - **Variables de entorno (opcionales):** `MCP_TRANSPORT=http` (o `streamable-http`), `MCP_PORT`, `MCP_HOST`. La línea de comandos tiene prioridad sobre el entorno.
 
 El endpoint MCP en modo HTTP es `http://<host>:<port>/mcp`. Los clientes MCP compatibles con Streamable HTTP pueden conectarse a esa URL.
@@ -119,6 +132,5 @@ El endpoint MCP en modo HTTP es `http://<host>:<port>/mcp`. Los clientes MCP com
 **Ejemplo mínimo con Docker:** construye una imagen que instale dependencias y ejecute `python main.py mcp --http`, expón el puerto 8000 y conecta tu cliente a `http://<ip-contenedor>:8000/mcp`.
 
 ## 📜 License
-This project is licensed under the MIT License. See the `LICENSE` file for more details.
 
-Disclaimer: Orbis Prism is an independent development tool and is not affiliated with Hypixel Studios.
+This project is licensed under the MIT License. See the `LICENSE` file for more details.
