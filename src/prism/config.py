@@ -25,6 +25,10 @@ CONFIG_KEY_JAR_PATH_RELEASE = "jar_path_release"
 CONFIG_KEY_OUTPUT_DIR = "output_dir"
 CONFIG_KEY_JADX_PATH = "jadx_path"
 CONFIG_KEY_LANG = "lang"
+CONFIG_KEY_ACTIVE_SERVER = "active_server"
+
+# Versiones de servidor soportadas (cada una tiene su DB y su carpeta descompilada)
+VALID_SERVER_VERSIONS = ("release", "prerelease")
 
 
 def get_project_root() -> Path:
@@ -81,6 +85,49 @@ def get_jar_path_from_config(root: Path | None = None) -> Path | None:
     return p if p.is_file() else None
 
 
+def get_jar_path_release_from_config(root: Path | None = None) -> Path | None:
+    """JAR de la versión release. Lee jar_path_release o infiere desde jar_path / sibling."""
+    root = root or get_project_root()
+    cfg = load_config(root)
+    raw = cfg.get(CONFIG_KEY_JAR_PATH_RELEASE)
+    if raw:
+        p = Path(raw)
+        if p.is_file():
+            return p
+    jar = get_jar_path_from_config(root)
+    if jar is None:
+        return None
+    s = str(jar).replace("\\", "/")
+    if "release" in s:
+        return jar
+    if "pre-release" in s:
+        from . import detection
+        return detection.get_sibling_version_jar_path(jar)
+    # Un solo JAR sin ruta release/prerelease: se considera release
+    return jar
+
+
+def get_jar_path_prerelease_from_config(root: Path | None = None) -> Path | None:
+    """JAR de la versión prerelease. Lee jar_path_prerelease o infiere desde jar_path / sibling."""
+    root = root or get_project_root()
+    cfg = load_config(root)
+    raw = cfg.get(CONFIG_KEY_JAR_PATH_PRERELEASE)
+    if raw:
+        p = Path(raw)
+        if p.is_file():
+            return p
+    jar = get_jar_path_from_config(root)
+    if jar is None:
+        return None
+    s = str(jar).replace("\\", "/")
+    if "pre-release" in s:
+        return jar
+    if "release" in s:
+        from . import detection
+        return detection.get_sibling_version_jar_path(jar)
+    return None
+
+
 def get_jadx_path_from_config(root: Path | None = None) -> Path | None:
     """Obtiene la ruta de JADX desde la config. None si no está o no es ejecutable."""
     cfg = load_config(root)
@@ -91,14 +138,14 @@ def get_jadx_path_from_config(root: Path | None = None) -> Path | None:
     return p if p.is_file() else None
 
 
-def get_decompiled_dir(root: Path | None = None) -> Path:
-    """Directorio de salida descompilada (solo núcleo Hytale)."""
-    return get_workspace_dir(root) / "decompiled"
+def get_decompiled_dir(root: Path | None = None, version: str = "release") -> Path:
+    """Directorio de salida descompilada para una versión (release/prerelease)."""
+    return get_workspace_dir(root) / "decompiled" / version
 
 
-def get_decompiled_raw_dir(root: Path | None = None) -> Path:
-    """Directorio de salida cruda de JADX (antes de la poda)."""
-    return get_workspace_dir(root) / "decompiled_raw"
+def get_decompiled_raw_dir(root: Path | None = None, version: str = "release") -> Path:
+    """Directorio de salida cruda de JADX para una versión (antes de la poda)."""
+    return get_workspace_dir(root) / "decompiled_raw" / version
 
 
 def get_db_dir(root: Path | None = None) -> Path:
@@ -106,9 +153,23 @@ def get_db_dir(root: Path | None = None) -> Path:
     return get_workspace_dir(root) / "db"
 
 
-def get_db_path(root: Path | None = None) -> Path:
-    """Ruta del archivo prism_api.db."""
-    return get_db_dir(root) / "prism_api.db"
+def get_db_path(root: Path | None = None, version: str | None = None) -> Path:
+    """
+    Ruta de la DB. Si version es None, usa active_server de config (default 'release').
+    Compatibilidad: si no hay active_server y existe prism_api.db, se devuelve esa.
+    """
+    root = root or get_project_root()
+    db_dir = get_db_dir(root)
+    if version is not None:
+        return db_dir / f"prism_api_{version}.db"
+    cfg = load_config(root)
+    active = cfg.get(CONFIG_KEY_ACTIVE_SERVER)
+    if active in VALID_SERVER_VERSIONS:
+        return db_dir / f"prism_api_{active}.db"
+    legacy = db_dir / "prism_api.db"
+    if legacy.exists():
+        return legacy
+    return db_dir / "prism_api_release.db"
 
 
 def get_logs_dir(root: Path | None = None) -> Path:

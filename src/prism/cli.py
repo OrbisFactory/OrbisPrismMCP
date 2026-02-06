@@ -1,4 +1,4 @@
-# CLI Orbis Prism: subcomandos init, decompile, index, serve, lang.
+# CLI Orbis Prism: subcomandos init, decompile, index, mcp, context, lang.
 
 import os
 import sys
@@ -67,9 +67,9 @@ def cmd_init(root: Path | None = None) -> int:
 
 
 def cmd_decompile(root: Path | None = None) -> int:
-    """Ejecuta JADX sobre el JAR configurado y poda a com.hypixel.hytale en workspace/decompiled."""
+    """Ejecuta JADX sobre los JARs configurados y poda a workspace/decompiled/<version>."""
     root = root or config.get_project_root()
-    success, err = decompile.run_decompile_and_prune(root)
+    success, err = decompile.run_decompile_and_prune(root, versions=None)
     if success:
         print(i18n.t("cli.decompile.success"))
         return 0
@@ -78,22 +78,66 @@ def cmd_decompile(root: Path | None = None) -> int:
     return 1
 
 
-def cmd_index(root: Path | None = None) -> int:
-    """Indexa el código en workspace/decompiled en la base SQLite (FTS5)."""
+def cmd_index(root: Path | None = None, version: str | None = None) -> int:
+    """Indexa el código de una versión en su DB. Si no se pasa versión, usa la activa."""
     root = root or config.get_project_root()
-    success, payload = extractor.run_index(root)
+    if version is not None:
+        if version not in config.VALID_SERVER_VERSIONS:
+            print(i18n.t("cli.context.use.invalid"), file=sys.stderr)
+            return 1
+    else:
+        cfg = config.load_config(root)
+        version = cfg.get(config.CONFIG_KEY_ACTIVE_SERVER) or "release"
+    success, payload = extractor.run_index(root, version)
     if success:
         classes, methods = payload
-        print(i18n.t("cli.index.success", classes=classes, methods=methods))
+        print(i18n.t("cli.index.success", classes=classes, methods=methods, version=version))
         return 0
     key = f"cli.index.{payload}"
     print(i18n.t(key), file=sys.stderr)
     return 1
 
 
-def cmd_serve(_root: Path | None = None) -> int:
-    """Placeholder: requiere servidor MCP (Fase 3)."""
-    print(i18n.t("cli.serve.not_implemented"), file=sys.stderr)
+def cmd_context_list(root: Path | None = None) -> int:
+    """Lista las versiones indexadas (DB existente) y cuál está activa."""
+    root = root or config.get_project_root()
+    db_dir = config.get_db_dir(root)
+    cfg = config.load_config(root)
+    active = cfg.get(config.CONFIG_KEY_ACTIVE_SERVER) or "release"
+    installed = []
+    for v in config.VALID_SERVER_VERSIONS:
+        if (db_dir / f"prism_api_{v}.db").is_file():
+            installed.append(v)
+    print(i18n.t("cli.context.list.title"))
+    if not installed:
+        print(i18n.t("cli.context.list.none"))
+        return 0
+    for v in config.VALID_SERVER_VERSIONS:
+        if v in installed:
+            prefix = "  * " if v == active else "    "
+            print(prefix + v)
+    return 0
+
+
+def cmd_context_use(version_str: str, root: Path | None = None) -> int:
+    """Establece la versión activa (release o prerelease)."""
+    root = root or config.get_project_root()
+    version = version_str.strip().lower()
+    if version not in config.VALID_SERVER_VERSIONS:
+        print(i18n.t("cli.context.use.invalid"), file=sys.stderr)
+        return 1
+    cfg = config.load_config(root)
+    cfg[config.CONFIG_KEY_ACTIVE_SERVER] = version
+    config.save_config(cfg, root)
+    if not (config.get_db_dir(root) / f"prism_api_{version}.db").is_file():
+        print(i18n.t("cli.context.use.not_indexed", version=version), file=sys.stderr)
+    print(i18n.t("cli.context.use.success", version=version))
+    return 0
+
+
+def cmd_mcp(_root: Path | None = None) -> int:
+    """Inicia el servidor MCP para IA (Fase 3)."""
+    print(i18n.t("cli.mcp.not_implemented"), file=sys.stderr)
     return 1
 
 
@@ -177,8 +221,10 @@ def print_help() -> None:
     print(i18n.t("cli.help.commands"))
     print("  init       ", i18n.t("cli.help.init_desc"))
     print("  decompile  ", i18n.t("cli.help.decompile_desc"))
-    print("  index      ", i18n.t("cli.help.index_desc"))
-    print("  serve      ", i18n.t("cli.help.serve_desc"))
+    print("  index [release|prerelease]  ", i18n.t("cli.help.index_desc"))
+    print("  mcp        ", i18n.t("cli.help.mcp_desc"))
+    print("  context list  ", i18n.t("cli.help.context_list_desc"))
+    print("  context use <release|prerelease>  ", i18n.t("cli.help.context_use_desc"))
     print("  lang list   ", i18n.t("cli.help.lang_list_desc"))
     print("  lang set <código>  ", i18n.t("cli.help.lang_set_desc"))
     print("  config set game_path <ruta>  ", i18n.t("cli.help.config_set_jar_desc"))
@@ -210,9 +256,25 @@ def main() -> int:
     if subcommand == "decompile":
         return cmd_decompile(root)
     if subcommand == "index":
-        return cmd_index(root)
-    if subcommand == "serve":
-        return cmd_serve(root)
+        version_arg = args[2] if len(args) > 2 else None
+        return cmd_index(root, version=version_arg)
+    if subcommand == "mcp":
+        return cmd_mcp(root)
+
+    if subcommand == "context":
+        if len(args) < 2:
+            print_help()
+            return 0
+        sub = args[1].lower()
+        if sub == "list":
+            return cmd_context_list(root)
+        if sub == "use":
+            if len(args) < 3:
+                print("Uso: prism context use <release|prerelease>", file=sys.stderr)
+                return 1
+            return cmd_context_use(args[2], root)
+        print(i18n.t("cli.unknown_command", cmd=f"context {sub}"), file=sys.stderr)
+        return 1
 
     if subcommand == "lang":
         if len(args) < 2:

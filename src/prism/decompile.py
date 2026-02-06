@@ -73,13 +73,16 @@ def prune_to_core(raw_dir: Path, dest_dir: Path) -> None:
     shutil.copytree(source_core, target)
 
 
-def run_decompile_and_prune(root: Path | None = None) -> tuple[bool, str]:
+def run_decompile_and_prune_for_version(root: Path | None, version: str) -> tuple[bool, str]:
     """
-    Orquesta: obtiene JAR y JADX de config, ejecuta JADX a decompiled_raw,
-    poda a decompiled. Devuelve (True, "") si todo bien, o (False, "no_jar"|"no_jadx"|"jadx_failed").
+    Descompila y poda una sola versión (release o prerelease).
+    Devuelve (True, "") o (False, "no_jar"|"no_jadx"|"jadx_failed").
     """
     root = root or config.get_project_root()
-    jar_path = config.get_jar_path_from_config(root)
+    if version == "release":
+        jar_path = config.get_jar_path_release_from_config(root)
+    else:
+        jar_path = config.get_jar_path_prerelease_from_config(root)
     if jar_path is None:
         return (False, "no_jar")
 
@@ -90,18 +93,49 @@ def run_decompile_and_prune(root: Path | None = None) -> tuple[bool, str]:
         return (False, "no_jadx")
     jadx_bin = Path(jadx_path)
 
-    raw_dir = config.get_decompiled_raw_dir(root)
-    decompiled_dir = config.get_decompiled_dir(root)
+    raw_dir = config.get_decompiled_raw_dir(root, version)
+    decompiled_dir = config.get_decompiled_dir(root, version)
     raw_dir.mkdir(parents=True, exist_ok=True)
     decompiled_dir.mkdir(parents=True, exist_ok=True)
 
     logs_dir = config.get_logs_dir(root)
     logs_dir.mkdir(parents=True, exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    log_path = logs_dir / f"decompile_{timestamp}.log"
+    log_path = logs_dir / f"decompile_{version}_{timestamp}.log"
 
     if not run_jadx(jar_path, raw_dir, jadx_bin, log_path):
         return (False, "jadx_failed")
 
     prune_to_core(raw_dir, decompiled_dir)
+    return (True, "")
+
+
+def run_decompile_and_prune(
+    root: Path | None = None,
+    versions: list[str] | None = None,
+) -> tuple[bool, str]:
+    """
+    Descompila y poda una o más versiones. Si versions es None, usa las que tengan JAR
+    configurado (release y/o prerelease). Si ninguna está configurada, fallback a jar_path
+    y descompila a release.
+    Devuelve (True, "") si todo bien; (False, "no_jar"|"no_jadx"|"jadx_failed") si falla.
+    """
+    root = root or config.get_project_root()
+    if versions is None:
+        versions = []
+        if config.get_jar_path_release_from_config(root):
+            versions.append("release")
+        if config.get_jar_path_prerelease_from_config(root):
+            versions.append("prerelease")
+        if not versions:
+            # Compatibilidad: un solo JAR en jar_path → descompilar a release
+            if config.get_jar_path_from_config(root):
+                versions = ["release"]
+            else:
+                return (False, "no_jar")
+
+    for version in versions:
+        ok, err = run_decompile_and_prune_for_version(root, version)
+        if not ok:
+            return (False, err)
     return (True, "")

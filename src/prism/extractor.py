@@ -48,22 +48,21 @@ def _extract_from_java(content: str, file_path: str) -> list[tuple[str, str, str
     return result
 
 
-def run_index(root: Path | None = None) -> tuple[bool, str | tuple[int, int]]:
+def run_index(root: Path | None = None, version: str = "release") -> tuple[bool, str | tuple[int, int]]:
     """
-    Recorre workspace/decompiled, extrae clases y métodos con regex,
-    y rellena prism_api.db (tablas classes, methods, api_fts).
-    Devuelve (True, (num_clases, num_metodos)) si todo bien;
+    Recorre workspace/decompiled/<version>, extrae clases y métodos con regex,
+    y rellena prism_api_<version>.db. Devuelve (True, (num_clases, num_metodos));
     (False, "no_decompiled") si no hay código; (False, "db_error") si falla la DB.
     """
     root = root or config.get_project_root()
-    decompiled_dir = config.get_decompiled_dir(root)
+    decompiled_dir = config.get_decompiled_dir(root, version)
     if not decompiled_dir.is_dir():
         return (False, "no_decompiled")
     java_files = list(decompiled_dir.rglob("*.java"))
     if not java_files:
         return (False, "no_decompiled")
 
-    db_path = config.get_db_path(root)
+    db_path = config.get_db_path(root, version)
     try:
         conn = db.get_connection(db_path)
         db.init_schema(conn)
