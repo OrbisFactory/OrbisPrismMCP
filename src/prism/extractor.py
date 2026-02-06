@@ -67,53 +67,47 @@ def run_index(root: Path | None = None, version: str = "release") -> tuple[bool,
 
     db_path = config.get_db_path(root, version)
     try:
-        conn = db.get_connection(db_path)
-        db.init_schema(conn)
-        db.clear_tables(conn)
+        with db.connection(db_path) as conn:
+            db.init_schema(conn)
+            db.clear_tables(conn)
+            files_processed = 0
+            for jpath in java_files:
+                try:
+                    content = jpath.read_text(encoding="utf-8", errors="replace")
+                except OSError:
+                    continue
+                # Ruta relativa al directorio descompilado para almacenar
+                try:
+                    rel_path = jpath.relative_to(decompiled_dir)
+                except ValueError:
+                    rel_path = jpath
+                file_path_str = str(rel_path).replace("\\", "/")
+                for pkg, class_name, kind, methods in _extract_from_java(content, file_path_str):
+                    class_id = db.insert_class(conn, pkg, class_name, kind, file_path_str)
+                    for m in methods:
+                        db.insert_method(
+                            conn,
+                            class_id,
+                            m["method"],
+                            m["returns"],
+                            m["params"],
+                            m["is_static"],
+                            m["annotation"],
+                        )
+                        db.insert_fts_row(
+                            conn,
+                            pkg,
+                            class_name,
+                            kind,
+                            m["method"],
+                            m["returns"],
+                            m["params"],
+                        )
+                files_processed += 1
+                if files_processed % BATCH_COMMIT_FILES == 0:
+                    conn.commit()
+            conn.commit()
+            stats = db.get_stats(conn)
+        return (True, stats)
     except Exception:
         return (False, "db_error")
-
-    try:
-        files_processed = 0
-        for jpath in java_files:
-            try:
-                content = jpath.read_text(encoding="utf-8", errors="replace")
-            except OSError:
-                continue
-            # Ruta relativa al directorio descompilado para almacenar
-            try:
-                rel_path = jpath.relative_to(decompiled_dir)
-            except ValueError:
-                rel_path = jpath
-            file_path_str = str(rel_path).replace("\\", "/")
-            for pkg, class_name, kind, methods in _extract_from_java(content, file_path_str):
-                class_id = db.insert_class(conn, pkg, class_name, kind, file_path_str)
-                for m in methods:
-                    db.insert_method(
-                        conn,
-                        class_id,
-                        m["method"],
-                        m["returns"],
-                        m["params"],
-                        m["is_static"],
-                        m["annotation"],
-                    )
-                    db.insert_fts_row(
-                        conn,
-                        pkg,
-                        class_name,
-                        kind,
-                        m["method"],
-                        m["returns"],
-                        m["params"],
-                    )
-            files_processed += 1
-            if files_processed % BATCH_COMMIT_FILES == 0:
-                conn.commit()
-        conn.commit()
-        stats = db.get_stats(conn)
-        conn.close()
-    except Exception:
-        conn.close()
-        return (False, "db_error")
-    return (True, stats)

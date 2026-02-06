@@ -6,7 +6,8 @@ from pathlib import Path
 
 
 def get_connection(db_path: Path) -> sqlite3.Connection:
-    """Abre una conexión a la base de datos; crea el archivo y directorio si no existen."""
+    """Uso interno: abre una conexión a la base de datos; crea el archivo y directorio si no existen.
+    Preferir db.connection(db_path) como context manager para garantizar cierre correcto."""
     db_path.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(str(db_path), check_same_thread=False)
     conn.row_factory = sqlite3.Row
