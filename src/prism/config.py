@@ -96,6 +96,11 @@ def get_decompiled_dir(root: Path | None = None) -> Path:
     return get_workspace_dir(root) / "decompiled"
 
 
+def get_decompiled_raw_dir(root: Path | None = None) -> Path:
+    """Directorio de salida cruda de JADX (antes de la poda)."""
+    return get_workspace_dir(root) / "decompiled_raw"
+
+
 def get_db_dir(root: Path | None = None) -> Path:
     """Directorio de la base de datos SQLite."""
     return get_workspace_dir(root) / "db"

@@ -5,6 +5,7 @@ import sys
 from pathlib import Path
 
 from . import config
+from . import decompile
 from . import detection
 from . import i18n
 
@@ -64,9 +65,15 @@ def cmd_init(root: Path | None = None) -> int:
     return 0
 
 
-def cmd_decompile(_root: Path | None = None) -> int:
-    """Placeholder: requiere pipeline JADX (Fase 1)."""
-    print(i18n.t("cli.decompile.not_implemented"), file=sys.stderr)
+def cmd_decompile(root: Path | None = None) -> int:
+    """Ejecuta JADX sobre el JAR configurado y poda a com.hypixel.hytale en workspace/decompiled."""
+    root = root or config.get_project_root()
+    success, err = decompile.run_decompile_and_prune(root)
+    if success:
+        print(i18n.t("cli.decompile.success"))
+        return 0
+    key = f"cli.decompile.{err}"
+    print(i18n.t(key), file=sys.stderr)
     return 1
 
 
