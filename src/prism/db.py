@@ -175,32 +175,81 @@ def get_class_and_methods(
     }
 
 
+def get_method(
+    conn: sqlite3.Connection,
+    package: str,
+    class_name: str,
+    method_name: str,
+) -> dict | None:
+    """
+    Devuelve la clase y los métodos de esa clase cuyo nombre coincide con method_name.
+    Coincidencia exacta de nombre (incluye sobrecargas con distintos params).
+    Si la clase no existe devuelve None. Si existe pero no hay métodos que coincidan, methods = [].
+    """
+    row = conn.execute(
+        "SELECT id, package, class_name, kind, file_path FROM classes WHERE package = ? AND class_name = ?",
+        (package.strip(), class_name.strip()),
+    ).fetchone()
+    if row is None:
+        return None
+    class_id = row["id"]
+    methods_rows = conn.execute(
+        "SELECT method, returns, params, is_static, annotation FROM methods WHERE class_id = ? AND method = ? ORDER BY method, params",
+        (class_id, method_name.strip()),
+    ).fetchall()
+    methods = [
+        {
+            "method": m["method"],
+            "returns": m["returns"],
+            "params": m["params"],
+            "is_static": bool(m["is_static"]),
+            "annotation": m["annotation"],
+        }
+        for m in methods_rows
+    ]
+    return {
+        "package": row["package"],
+        "class_name": row["class_name"],
+        "kind": row["kind"],
+        "file_path": row["file_path"],
+        "methods": methods,
+    }
+
+
 def list_classes(
     conn: sqlite3.Connection,
     package_prefix: str,
     prefix_match: bool = True,
+    limit: int = 100,
+    offset: int = 0,
 ) -> list[dict]:
     """
     Lista clases por paquete exacto o por prefijo.
     Si prefix_match es True, package_prefix se usa como prefijo (package = X OR package LIKE X.%).
     Si es False, solo package = package_prefix.
+    limit/offset permiten paginar (limit por defecto 100, máx 500).
     Devuelve lista de dict con package, class_name, kind, file_path.
     """
     p = package_prefix.strip()
     if not p:
         return []
+    limit = max(1, min(int(limit), 500))
+    offset = max(0, int(offset))
     if prefix_match:
         pattern = p if p.endswith(".") else f"{p}."
         cur = conn.execute(
             """SELECT package, class_name, kind, file_path FROM classes
                WHERE package = ? OR package LIKE ?
-               ORDER BY package, class_name""",
-            (p, f"{pattern}%"),
+               ORDER BY package, class_name
+               LIMIT ? OFFSET ?""",
+            (p, f"{pattern}%", limit, offset),
         )
     else:
         cur = conn.execute(
-            "SELECT package, class_name, kind, file_path FROM classes WHERE package = ? ORDER BY class_name",
-            (p,),
+            """SELECT package, class_name, kind, file_path FROM classes
+               WHERE package = ? ORDER BY class_name
+               LIMIT ? OFFSET ?""",
+            (p, limit, offset),
         )
     return [
         {"package": r["package"], "class_name": r["class_name"], "kind": r["kind"], "file_path": r["file_path"]}
@@ -214,18 +263,22 @@ def search_fts(
     limit: int = 50,
     package_prefix: str | None = None,
     kind: str | None = None,
-) -> list[sqlite3.Row]:
+    unique_classes: bool = False,
+) -> list[sqlite3.Row] | list[dict]:
     """
     Busca en la tabla FTS5 api_fts. query_term se pasa a MATCH (sintaxis FTS5).
     JOIN con classes para incluir file_path (ruta relativa al directorio descompilado).
     package_prefix: opcional; filtra por paquete exacto o prefijo (X o X.%).
     kind: opcional; filtra por tipo (class, interface, record, enum).
-    Devuelve lista de filas (package, class_name, kind, method_name, returns, params, file_path).
+    unique_classes: si True, devuelve una entrada por clase (package, class_name, kind, file_path, method_count).
+    Si False, devuelve una fila por método (comportamiento clásico).
     Puede lanzar sqlite3.OperationalError si la sintaxis FTS5 es inválida.
     """
     if not query_term or not query_term.strip():
         return []
     term = query_term.strip()
+    # Para unique_classes necesitamos más filas para agrupar; luego limitamos por clase
+    fetch_limit = limit * 20 if unique_classes else limit
     sql = """SELECT api_fts.package, api_fts.class_name, api_fts.kind, api_fts.method_name,
              api_fts.returns, api_fts.params, c.file_path
              FROM api_fts JOIN classes c ON c.package = api_fts.package AND c.class_name = api_fts.class_name
@@ -240,6 +293,26 @@ def search_fts(
         sql += " AND api_fts.kind = ?"
         params.append(kind.strip().lower())
     sql += " LIMIT ?"
-    params.append(limit)
+    params.append(fetch_limit)
     cur = conn.execute(sql, params)
-    return cur.fetchall()
+    rows = cur.fetchall()
+    if not unique_classes:
+        return rows
+    # Deduplicar por (package, class_name) y contar métodos que coincidieron
+    seen: set[tuple[str, str]] = set()
+    out: list[dict] = []
+    for r in rows:
+        key = (r["package"], r["class_name"])
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append({
+            "package": r["package"],
+            "class_name": r["class_name"],
+            "kind": r["kind"],
+            "file_path": r["file_path"],
+            "method_count": sum(1 for x in rows if (x["package"], x["class_name"]) == key),
+        })
+        if len(out) >= limit:
+            break
+    return out
