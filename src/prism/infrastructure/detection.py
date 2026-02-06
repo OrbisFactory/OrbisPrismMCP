@@ -1,4 +1,4 @@
-# HytaleServer.jar detection: env, standard Windows paths and validation.
+# Detección de HytaleServer.jar: env, paths estándar Windows y validación.
 
 import os
 import shutil
@@ -9,17 +9,16 @@ from . import config
 
 
 def is_valid_jar(path: Path) -> bool:
-    """Check that the file exists and is a valid JAR (public, for CLI use)."""
+    """Comprueba que el archivo existe y es un JAR válido (público, para CLI)."""
     return _is_valid_jar(path)
 
 
 def _is_valid_jar(path: Path) -> bool:
-    """Check that the file exists and is a JAR (ZIP with valid structure)."""
+    """Comprueba que el archivo existe y es un JAR (ZIP con estructura válida)."""
     if not path.is_file() or path.suffix.lower() != ".jar":
         return False
     try:
         with zipfile.ZipFile(path, "r") as z:
-            # A JAR has at least META-INF/MANIFEST.MF or classes
             names = z.namelist()
             return any(
                 n.startswith("META-INF/") or n.endswith(".class")
@@ -29,17 +28,12 @@ def _is_valid_jar(path: Path) -> bool:
         return False
 
 
-# Subpath under Hytale root to reach server JAR (release or pre-release)
 _RELATIVE_SERVER_JAR = ("install", "release", "package", "game", "latest", "Server", config.HYTALE_JAR_NAME)
 _RELATIVE_SERVER_JAR_PRERELEASE = ("install", "pre-release", "package", "game", "latest", "Server", config.HYTALE_JAR_NAME)
 
 
 def find_jar_paths_from_hytale_root(hytale_root: Path) -> tuple[Path | None, Path | None]:
-    """
-    Given the Hytale root path (e.g. %APPDATA%\\Hytale), infer and validate
-    HytaleServer.jar paths for release and pre-release.
-    Returns (release_jar, prerelease_jar); each is None if not found or invalid.
-    """
+    """Dado la raíz de Hytale (p. ej. %APPDATA%\\Hytale), infiere y valida rutas de HytaleServer.jar."""
     root = hytale_root.resolve()
     if not root.is_dir():
         return (None, None)
@@ -51,7 +45,7 @@ def find_jar_paths_from_hytale_root(hytale_root: Path) -> tuple[Path | None, Pat
 
 
 def is_hytale_root(path: Path) -> bool:
-    """Check whether the path is the Hytale root folder (contains install/release or install/pre-release)."""
+    """Comprueba si la ruta es la carpeta raíz de Hytale."""
     root = path.resolve()
     if not root.is_dir():
         return False
@@ -61,7 +55,7 @@ def is_hytale_root(path: Path) -> bool:
 
 
 def _search_standard_paths() -> list[Path]:
-    """Standard paths: Hytale root (%APPDATA%\\Hytale) and Server release."""
+    """Paths estándar: raíz Hytale (%APPDATA%\\Hytale) y Server release."""
     candidates: list[Path] = []
     appdata = os.environ.get("APPDATA")
     if appdata:
@@ -75,11 +69,7 @@ def _search_standard_paths() -> list[Path]:
 
 
 def get_sibling_version_jar_path(jar_path: Path) -> Path | None:
-    """
-    If the JAR path contains the segment 'install/release/...' or 'install/pre-release/...',
-    build the "sibling" path (release <-> pre-release) and return it if it exists
-    and is a valid JAR. Otherwise return None.
-    """
+    """Si la ruta del JAR contiene 'install/release/...' o 'install/pre-release/...', construye la ruta hermano."""
     resolved = jar_path.resolve()
     parts = list(resolved.parts)
     try:
@@ -102,10 +92,9 @@ def get_sibling_version_jar_path(jar_path: Path) -> Path | None:
 
 
 def find_jar_in_dir(directory: Path, jar_name: str = config.HYTALE_JAR_NAME) -> Path | None:
-    """Search for the JAR in a directory (and one level of subfolders)."""
+    """Busca el JAR en un directorio (y un nivel de subcarpetas)."""
     if not directory.is_dir():
         return None
-    # Directly in the folder
     direct = directory / jar_name
     if direct.is_file():
         return direct
@@ -118,11 +107,7 @@ def find_jar_in_dir(directory: Path, jar_name: str = config.HYTALE_JAR_NAME) -> 
 
 
 def resolve_jadx_path(root: Path | None = None) -> str | None:
-    """
-    Resolve the JADX executable path for saving to config.
-    Order: JADX_PATH -> bin/jadx or bin/jadx.bat in root -> which('jadx').
-    Returns the path as string or None if not found.
-    """
+    """Resuelve la ruta del ejecutable JADX. Orden: JADX_PATH -> bin/jadx en root -> which('jadx')."""
     root = root or config.get_project_root()
 
     def _check_path(p: Path) -> str | None:
@@ -135,20 +120,17 @@ def resolve_jadx_path(root: Path | None = None) -> str | None:
                     return str(candidate.resolve())
         return None
 
-    # 1. Environment variable
     env_path = os.environ.get(config.ENV_JADX_PATH)
     if env_path:
         result = _check_path(Path(env_path).resolve())
         if result:
             return result
-    # 2. bin/ in project root
     bin_dir = root / "bin"
     if bin_dir.is_dir():
         for name in ("jadx", "jadx.bat", "jadx.cmd"):
             candidate = bin_dir / name
             if candidate.is_file():
                 return str(candidate.resolve())
-    # 3. which('jadx')
     jadx = shutil.which("jadx")
     if jadx:
         return jadx
@@ -156,17 +138,10 @@ def resolve_jadx_path(root: Path | None = None) -> str | None:
 
 
 def find_and_validate_jar(root: Path | None = None) -> Path | None:
-    """
-    Infer HytaleServer.jar path:
-    1. HYTALE_JAR_PATH env var
-    2. Saved config (jar_path; see prism config set game_path)
-    3. Standard Windows path: %APPDATA%\\Hytale\\install\\...\\Server
-    Returns valid JAR Path or None.
-    """
+    """Infiere la ruta de HytaleServer.jar: env, config, path estándar Windows."""
     root = root or config.get_project_root()
     jar_name = config.HYTALE_JAR_NAME
 
-    # 1. Environment variable (may be JAR or Hytale root folder)
     env_path = os.environ.get(config.ENV_JAR_PATH)
     if env_path:
         p = Path(env_path).resolve()
@@ -179,13 +154,10 @@ def find_and_validate_jar(root: Path | None = None) -> Path | None:
         elif _is_valid_jar(p):
             return p
 
-    # 2. Saved config
-    from .config import get_jar_path_from_config
-    saved = get_jar_path_from_config(root)
+    saved = config.get_jar_path_from_config(root)
     if saved and _is_valid_jar(saved):
         return saved
 
-    # 3. Standard paths (Hytale root or Server folder)
     for candidate_dir in _search_standard_paths():
         if is_hytale_root(candidate_dir):
             release_jar, prerelease_jar = find_jar_paths_from_hytale_root(candidate_dir)

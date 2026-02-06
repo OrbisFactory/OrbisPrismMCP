@@ -1,16 +1,24 @@
-# MCP server for Orbis Prism (official SDK: https://github.com/modelcontextprotocol/python-sdk).
-# Exposes prism_* tools to search the indexed Hytale API.
-# Compatible with mcp>=1.0 (v1.x uses FastMCP; v2 uses MCPServer).
-# Transport: stdio (default) or streamable-http (useful for Docker).
+# MCP server for Orbis Prism (official SDK: https://github.com/modelcontextprotocol# Exposes prism_* tools; uses application layer + infrastructure adapters.
 
 import json
 
 from mcp.server.fastmcp import FastMCP
 
-from . import config
-from . import db
-from . import i18n
-from . import search
+from .. import i18n
+from ..application import (
+    get_class as app_get_class,
+    get_context_list as app_get_context_list,
+    get_index_stats as app_get_index_stats,
+    get_method as app_get_method,
+    list_classes as app_list_classes,
+    read_source as app_read_source,
+    search_api as app_search_api,
+)
+from ..domain.constants import normalize_version
+from ..infrastructure import FileConfigProvider, SqliteIndexRepository
+
+_config_provider = FileConfigProvider()
+_index_repository = SqliteIndexRepository()
 
 
 def _run_search(
@@ -21,14 +29,10 @@ def _run_search(
     kind: str | None = None,
     unique_classes: bool = False,
 ) -> str:
-    """
-    Run FTS5 search via the access layer (search.search_api).
-    package_prefix and kind are optional filters. unique_classes: one entry per class with method_count.
-    Returns JSON string or error dict.
-    """
-    if version not in config.VALID_SERVER_VERSIONS:
-        version = "release"
-    results, err = search.search_api(
+    version = normalize_version(version)
+    results, err = app_search_api(
+        _config_provider,
+        _index_repository,
         None,
         version,
         query.strip(),
@@ -36,6 +40,7 @@ def _run_search(
         package_prefix=package_prefix or None,
         kind=kind or None,
         unique_classes=unique_classes,
+        t=i18n.t,
     )
     if err is not None:
         return json.dumps(err, ensure_ascii=False)
@@ -48,7 +53,6 @@ def _run_search(
 
 
 def _parse_fqcn(fqcn: str) -> tuple[str, str] | None:
-    """If fqcn is 'com.hypixel.hytale.server.GameManager', returns ('com.hypixel.hytale.server', 'GameManager'). None if there is no dot."""
     s = (fqcn or "").strip()
     if not s or "." not in s:
         return None
@@ -62,9 +66,7 @@ def _run_get_class(
     class_name: str | None = None,
     fqcn: str | None = None,
 ) -> str:
-    """Return the exact class (package, class_name, kind, file_path) and all its methods. If fqcn is passed, package and class_name are derived. JSON or error."""
-    if version not in config.VALID_SERVER_VERSIONS:
-        version = "release"
+    version = normalize_version(version)
     p = (package or "").strip()
     c = (class_name or "").strip()
     if (fqcn or "").strip():
@@ -73,14 +75,9 @@ def _run_get_class(
             p, c = parsed
     if not p or not c:
         return json.dumps({"error": "missing_params", "message": "Provide package and class_name, or fqcn (e.g. com.hypixel.hytale.server.GameManager)."}, ensure_ascii=False)
-    root = config.get_project_root()
-    db_path = config.get_db_path(root, version)
-    if not db_path.is_file():
-        return json.dumps({"error": "no_db", "message": f"Database for version {version} does not exist."}, ensure_ascii=False)
-    with db.connection(db_path) as conn:
-        data = db.get_class_and_methods(conn, p, c)
-    if data is None:
-        return json.dumps({"error": "not_found", "message": f"Class {p}.{c} not found."}, ensure_ascii=False)
+    data, err = app_get_class(_config_provider, _index_repository, None, version, p, c)
+    if err is not None:
+        return json.dumps(err, ensure_ascii=False)
     return json.dumps({"version": version, **data}, ensure_ascii=False)
 
 
@@ -91,20 +88,15 @@ def _run_list_classes(
     limit: int = 100,
     offset: int = 0,
 ) -> str:
-    """List classes by exact package or prefix. limit/offset for pagination. JSON: version, package_prefix, prefix_match, count, classes."""
-    if version not in config.VALID_SERVER_VERSIONS:
-        version = "release"
+    version = normalize_version(version)
     p = (package_prefix or "").strip()
     if not p:
         return json.dumps({"error": "missing_param", "message": "package_prefix is required"}, ensure_ascii=False)
     limit = max(1, min(int(limit), 500)) if limit is not None else 100
     offset = max(0, int(offset)) if offset is not None else 0
-    root = config.get_project_root()
-    db_path = config.get_db_path(root, version)
-    if not db_path.is_file():
-        return json.dumps({"error": "no_db", "message": f"Database for version {version} does not exist."}, ensure_ascii=False)
-    with db.connection(db_path) as conn:
-        classes = db.list_classes(conn, p, prefix_match=prefix_match, limit=limit, offset=offset)
+    classes, err = app_list_classes(_config_provider, _index_repository, None, version, p, prefix_match=prefix_match, limit=limit, offset=offset)
+    if err is not None:
+        return json.dumps(err, ensure_ascii=False)
     return json.dumps({
         "version": version,
         "package_prefix": p,
@@ -115,43 +107,20 @@ def _run_list_classes(
 
 
 def _run_context_list() -> str:
-    """Return indexed versions and active version. JSON: indexed, active."""
-    root = config.get_project_root()
-    cfg = config.load_config(root)
-    active = cfg.get(config.CONFIG_KEY_ACTIVE_SERVER) or "release"
-    indexed = [
-        v for v in config.VALID_SERVER_VERSIONS
-        if config.get_db_path(root, v).is_file()
-    ]
-    return json.dumps({"indexed": indexed, "active": active}, ensure_ascii=False)
+    ctx = app_get_context_list(_config_provider, None)
+    return json.dumps(ctx, ensure_ascii=False)
 
 
 def _run_index_stats(version: str | None) -> str:
-    """Return number of classes and methods for the version (or active). JSON or error."""
-    root = config.get_project_root()
-    if version is not None and version not in config.VALID_SERVER_VERSIONS:
-        version = "release"
-    db_path = config.get_db_path(root, version)
-    if not db_path.is_file():
-        return json.dumps({
-            "error": "no_db",
-            "message": f"Database for version {version or 'active'} does not exist. Run prism index first.",
-        }, ensure_ascii=False)
-    resolved_version = version
-    if resolved_version is None:
-        cfg = config.load_config(root)
-        resolved_version = cfg.get(config.CONFIG_KEY_ACTIVE_SERVER) or "release"
-    with db.connection(db_path) as conn:
-        classes, methods = db.get_stats(conn)
-    return json.dumps({
-        "version": resolved_version,
-        "classes": classes,
-        "methods": methods,
-    }, ensure_ascii=False)
+    if version and str(version).strip():
+        version = normalize_version(version)
+    data, err = app_get_index_stats(_config_provider, _index_repository, None, version)
+    if err is not None:
+        return json.dumps(err, ensure_ascii=False)
+    return json.dumps(data, ensure_ascii=False)
 
 
 def _run_fts_help() -> str:
-    """Return fixed text with FTS5 syntax for prism_search."""
     return (
         "FTS5 search syntax (prism_search):\n"
         "- Single word: matches that token.\n"
@@ -169,52 +138,20 @@ def _run_read_source(
     start_line: int | None = None,
     end_line: int | None = None,
 ) -> str:
-    """Read the contents of a decompiled Java file. Validates path traversal. start_line/end_line are 1-based; if provided, returns only that range and total_lines."""
-    if version not in config.VALID_SERVER_VERSIONS:
-        version = "release"
-    path_str = (file_path or "").strip().replace("\\", "/").lstrip("/")
-    if not path_str:
-        return json.dumps({"error": "missing_path", "message": "file_path is required"}, ensure_ascii=False)
-    root = config.get_project_root()
-    decompiled_dir = config.get_decompiled_dir(root, version).resolve()
-    full_path = (decompiled_dir / path_str).resolve()
-    if not full_path.is_relative_to(decompiled_dir):
-        return json.dumps({"error": "invalid_path", "message": "file_path must be inside decompiled directory"}, ensure_ascii=False)
-    if not full_path.is_file():
-        return json.dumps({"error": "not_found", "message": f"File not found: {path_str}"}, ensure_ascii=False)
-    try:
-        content = full_path.read_text(encoding="utf-8", errors="replace")
-    except OSError as e:
-        return json.dumps({"error": "read_error", "message": str(e)}, ensure_ascii=False)
-    lines = content.splitlines()
-    total_lines = len(lines)
-    payload: dict = {"content": content, "file_path": path_str, "version": version}
-    if start_line is not None or end_line is not None:
-        one = max(1, int(start_line) if start_line is not None else 1)
-        two = min(total_lines, int(end_line) if end_line is not None else total_lines)
-        if one > two:
-            one, two = two, one
-        payload["total_lines"] = total_lines
-        payload["start_line"] = one
-        payload["end_line"] = two
-        payload["content"] = "\n".join(lines[one - 1 : two])
+    version = normalize_version(version)
+    payload = app_read_source(_config_provider, None, version, file_path, start_line=start_line, end_line=end_line)
+    if "error" in payload:
+        return json.dumps({"error": payload["error"], "message": payload["message"]}, ensure_ascii=False)
     return json.dumps(payload, ensure_ascii=False)
 
 
 def _run_get_method(version: str, package: str, class_name: str, method_name: str) -> str:
-    """Return the class and methods of that class whose name matches method_name (exact match, includes overloads). JSON or error."""
-    if version not in config.VALID_SERVER_VERSIONS:
-        version = "release"
+    version = normalize_version(version)
     if not (package or "").strip() or not (class_name or "").strip() or not (method_name or "").strip():
         return json.dumps({"error": "missing_params", "message": "package, class_name and method_name are required"}, ensure_ascii=False)
-    root = config.get_project_root()
-    db_path = config.get_db_path(root, version)
-    if not db_path.is_file():
-        return json.dumps({"error": "no_db", "message": f"Database for version {version} does not exist."}, ensure_ascii=False)
-    with db.connection(db_path) as conn:
-        data = db.get_method(conn, package.strip(), class_name.strip(), method_name.strip())
-    if data is None:
-        return json.dumps({"error": "not_found", "message": f"Class {package}.{class_name} not found."}, ensure_ascii=False)
+    data, err = app_get_method(_config_provider, _index_repository, None, version, package.strip(), class_name.strip(), method_name.strip())
+    if err is not None:
+        return json.dumps(err, ensure_ascii=False)
     return json.dumps({"version": version, **data}, ensure_ascii=False)
 
 

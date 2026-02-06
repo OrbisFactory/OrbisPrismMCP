@@ -5,14 +5,15 @@ import os
 import sys
 from pathlib import Path
 
-from . import config
-from . import db
-from . import decompile
-from . import detection
-from . import extractor
-from . import i18n
-from . import prune
-from . import search
+from ..infrastructure import decompile
+from ..infrastructure import detection
+from ..infrastructure import extractor
+from .. import i18n
+from ..infrastructure import prune
+from ..application import search
+from ..application import get_context_list as app_get_context_list
+from ..domain.constants import VALID_SERVER_VERSIONS as DOMAIN_VALID_VERSIONS, normalize_version
+from ..infrastructure import FileConfigProvider, SqliteIndexRepository
 
 # Flag for "all versions" in build, decompile, index
 VERSION_FLAG_ALL = ("--all", "-a")
@@ -62,8 +63,7 @@ def _parse_query_args(args: list[str]) -> tuple[str | None, str, int, bool]:
             i += 1
     term = positionals[0] if positionals else None
     version = positionals[1] if len(positionals) > 1 else "release"
-    if version not in config.VALID_SERVER_VERSIONS:
-        version = "release"
+    version = normalize_version(version)
     return (term, version, limit, output_json)
 
 
@@ -125,7 +125,7 @@ def _parse_version_arg(args: list[str], start_index: int) -> tuple[str | None, b
     a = args[start_index].strip().lower()
     if a in VERSION_FLAG_ALL:
         return (None, False)
-    if a in config.VALID_SERVER_VERSIONS:
+    if a in DOMAIN_VALID_VERSIONS:
         return (a, False)
     return (None, True)
 
@@ -148,7 +148,6 @@ def cmd_init(root: Path | None = None) -> int:
     root = root or config.get_project_root()
     _ensure_dirs(root)
 
-    # If HYTALE_JAR_PATH is set, validate first and show specific message if it fails
     env_jar = os.environ.get(config.ENV_JAR_PATH)
     if env_jar:
         env_path = Path(env_jar).resolve()
@@ -169,7 +168,6 @@ def cmd_init(root: Path | None = None) -> int:
     jadx_path = detection.resolve_jadx_path(root)
     if jadx_path:
         cfg[config.CONFIG_KEY_JADX_PATH] = jadx_path
-    # Auto-detect the other version (release / pre-release)
     sibling = detection.get_sibling_version_jar_path(jar_path)
     if sibling:
         if "pre-release" in str(jar_path).replace("\\", "/"):
@@ -206,12 +204,12 @@ def cmd_query(
     limit: int = 30,
     output_json: bool = False,
 ) -> int:
-    """Run FTS5 search on the DB for the given version. output_json: only print JSON (version, term, count, results with file_path)."""
+    """Run FTS5 search on the DB for the given version. output_json: only print JSON."""
     root = root or config.get_project_root()
     if not query_term or not query_term.strip():
         print(i18n.t("cli.query.usage"), file=sys.stderr)
         return 1
-    if version not in config.VALID_SERVER_VERSIONS:
+    if version not in DOMAIN_VALID_VERSIONS:
         print(i18n.t("cli.context.use.invalid"), file=sys.stderr)
         return 1
     results, err = search.search_api(root, version, query_term.strip(), limit=limit)
@@ -231,7 +229,7 @@ def cmd_query(
 
 
 def cmd_prune(root: Path | None = None, version: str | None = None) -> int:
-    """Run only the prune (raw -> decompiled). version=None -> all that have raw; 'release'|'prerelease' -> that one. Default: release."""
+    """Run only the prune (raw -> decompiled). version=None -> all that have raw."""
     root = root or config.get_project_root()
     versions = None if version is None else [version]
     success, err = prune.run_prune_only(root, versions=versions)
@@ -247,7 +245,7 @@ def cmd_prune(root: Path | None = None, version: str | None = None) -> int:
 
 
 def cmd_build(root: Path | None = None, version: str | None = None) -> int:
-    """Run decompile and index. version=None -> all; 'release'|'prerelease' -> only that. Default (no arg) -> release."""
+    """Run decompile and index. version=None -> all; 'release'|'prerelease' -> only that."""
     root = root or config.get_project_root()
     versions = None if version is None else [version]
 
@@ -260,7 +258,7 @@ def cmd_build(root: Path | None = None, version: str | None = None) -> int:
         return 1
     print(i18n.t("cli.build.phase_decompile_done"))
 
-    to_index = list(config.VALID_SERVER_VERSIONS) if version is None else [version]
+    to_index = list(DOMAIN_VALID_VERSIONS) if version is None else [version]
     print(i18n.t("cli.build.phase_index"))
     for v in to_index:
         print(i18n.t("cli.build.indexing_version", version=v))
@@ -278,14 +276,13 @@ def cmd_build(root: Path | None = None, version: str | None = None) -> int:
 
 
 def cmd_index(root: Path | None = None, version: str | None = None) -> int:
-    """Index into the DB. version=None -> index release and prerelease; 'release'|'prerelease' -> only that. Default (no arg) -> release."""
+    """Index into the DB. version=None -> index release and prerelease."""
     root = root or config.get_project_root()
-    if version is not None and version not in config.VALID_SERVER_VERSIONS:
+    if version is not None and version not in DOMAIN_VALID_VERSIONS:
         print(i18n.t("cli.context.use.invalid"), file=sys.stderr)
         return 1
     if version is None:
-        # --all: index both versions
-        for v in config.VALID_SERVER_VERSIONS:
+        for v in DOMAIN_VALID_VERSIONS:
             ok, payload = extractor.run_index(root, v)
             if ok:
                 classes, methods = payload
@@ -307,17 +304,15 @@ def cmd_index(root: Path | None = None, version: str | None = None) -> int:
 def cmd_context_list(root: Path | None = None) -> int:
     """List indexed versions (existing DB) and which is active."""
     root = root or config.get_project_root()
-    cfg = config.load_config(root)
-    active = cfg.get(config.CONFIG_KEY_ACTIVE_SERVER) or "release"
-    installed = []
-    for v in config.VALID_SERVER_VERSIONS:
-        if config.get_db_path(root, v).is_file():
-            installed.append(v)
+    _config_provider = FileConfigProvider()
+    ctx = app_get_context_list(_config_provider, root)
+    installed = ctx["indexed"]
+    active = ctx["active"]
     print(i18n.t("cli.context.list.title"))
     if not installed:
         print(i18n.t("cli.context.list.none"))
         return 0
-    for v in config.VALID_SERVER_VERSIONS:
+    for v in DOMAIN_VALID_VERSIONS:
         if v in installed:
             prefix = "  * " if v == active else "    "
             print(prefix + v)
@@ -328,7 +323,7 @@ def cmd_context_use(version_str: str, root: Path | None = None) -> int:
     """Set the active version (release or prerelease)."""
     root = root or config.get_project_root()
     version = version_str.strip().lower()
-    if version not in config.VALID_SERVER_VERSIONS:
+    if version not in DOMAIN_VALID_VERSIONS:
         print(i18n.t("cli.context.use.invalid"), file=sys.stderr)
         return 1
     cfg = config.load_config(root)
@@ -348,8 +343,6 @@ def cmd_mcp(
 ) -> int:
     """Start the MCP server for AI. Default stdio; with transport streamable-http listens on host:port."""
     root = _root or config.get_project_root()
-    # Only show instructions if stderr is a terminal (e.g. user ran by hand).
-    # When Cursor launches the process via stdio, stderr is not a TTY and we do not print, to avoid interference.
     if sys.stderr.isatty():
         if transport == "streamable-http":
             print(i18n.t("cli.mcp.instructions_http_title"), file=sys.stderr)
@@ -391,7 +384,7 @@ def cmd_lang_list(root: Path | None = None) -> int:
 
 
 def cmd_config_set_jar_path(path_str: str, root: Path | None = None) -> int:
-    """Set the path to HytaleServer.jar or to the Hytale root folder (e.g. %%APPDATA%%\\Hytale)."""
+    """Set the path to HytaleServer.jar or to the Hytale root folder."""
     root = root or config.get_project_root()
     path = Path(path_str).resolve()
     cfg = config.load_config(root)
@@ -449,7 +442,6 @@ def cmd_lang_set(lang_code: str, root: Path | None = None) -> int:
 
 
 def print_help() -> None:
-    # Fixed width to align descriptions (command + spaces)
     w = 38
     fmt = "  {:<" + str(w) + "}"
     print(i18n.t("cli.help.title"))
