@@ -1,24 +1,24 @@
-# Internacionalización: carga de locales JSON y traducción con fallback a español.
+# Internationalisation: load JSON locales and translate with fallback to Spanish.
 
 import os
 import json
 from pathlib import Path
 
-from . import config
+from .infrastructure import config_impl
 
-# Código por defecto cuando no hay config ni env
+# Default code when there is no config or env
 DEFAULT_LOCALE = "es"
-# Directorio de archivos de idioma (junto a este módulo)
+# Language file directory (next to this module)
 _LOCALES_DIR = Path(__file__).resolve().parent / "locales"
 
-# Cache: locale -> dict de claves
+# Cache: locale -> key dict
 _catalogs: dict[str, dict] = {}
-# Fallback cuando el idioma activo tiene valor vacío
+# Fallback when active locale has empty value
 _fallback_catalog: dict | None = None
 
 
 def _load_catalog(locale: str) -> dict:
-    """Carga el JSON del idioma. Devuelve dict vacío si el archivo no existe."""
+    """Load the locale JSON. Returns empty dict if the file does not exist."""
     if locale in _catalogs:
         return _catalogs[locale]
     path = _LOCALES_DIR / f"{locale}.json"
@@ -36,11 +36,11 @@ def _load_catalog(locale: str) -> dict:
 
 def get_current_locale(root: Path | None = None) -> str:
     """
-    Obtiene el idioma actual: config .prism.json -> PRISM_LANG -> LANG -> es.
-    Normaliza a código corto (es, en).
+    Get current locale: config .prism.json -> PRISM_LANG -> LANG -> es.
+    Normalises to short code (es, en).
     """
-    cfg = config.load_config(root)
-    lang = cfg.get(config.CONFIG_KEY_LANG)
+    cfg = config_impl.load_config(root)
+    lang = cfg.get(config_impl.CONFIG_KEY_LANG)
     if lang:
         return _normalize_locale(lang)
     env = os.environ.get("PRISM_LANG") or os.environ.get("LANG", "")
@@ -50,17 +50,17 @@ def get_current_locale(root: Path | None = None) -> str:
 
 
 def _normalize_locale(locale: str) -> str:
-    """Convierte en_US, en-US, etc. a en; es_ES a es."""
+    """Convert en_US, en-US, etc. to en; es_ES to es."""
     part = locale.split("_")[0].split("-")[0].strip().lower()
     return part if part else DEFAULT_LOCALE
 
 
 def t(key: str, **kwargs: str) -> str:
     """
-    Traduce la clave al idioma actual. Si el valor está vacío, usa el de es.
-    kwargs reemplaza placeholders {name} en la cadena.
+    Translate the key to the current locale. If the value is empty, use the one from es.
+    kwargs replaces {name} placeholders in the string.
     """
-    root = config.get_project_root()
+    root = config_impl.get_project_root()
     locale = get_current_locale(root)
     catalog = _load_catalog(locale)
     fallback = _load_catalog(DEFAULT_LOCALE) if locale != DEFAULT_LOCALE else None
@@ -78,8 +78,8 @@ def t(key: str, **kwargs: str) -> str:
 
 def get_available_locales() -> list[tuple[str, str]]:
     """
-    Lista de (código, nombre) de idiomas disponibles.
-    El nombre se toma de "_name" en cada JSON.
+    List of (code, name) for available locales.
+    The name is taken from "_name" in each JSON.
     """
     result: list[tuple[str, str]] = []
     if not _LOCALES_DIR.is_dir():
@@ -93,5 +93,5 @@ def get_available_locales() -> list[tuple[str, str]]:
 
 
 def is_locale_available(locale: str) -> bool:
-    """Comprueba si existe el archivo de idioma."""
+    """Check whether the locale file exists."""
     return (_LOCALES_DIR / f"{_normalize_locale(locale)}.json").exists()

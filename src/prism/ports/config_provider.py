@@ -1,0 +1,13 @@
+# Port: configuration and path resolution.
+
+from pathlib import Path
+from typing import Protocol
+
+
+class ConfigProvider(Protocol):
+    """Provides project root, DB path, decompiled dir and config dict."""
+
+    def get_project_root(self) -> Path: ...
+    def get_db_path(self, root: Path | None, version: str | None) -> Path: ...
+    def get_decompiled_dir(self, root: Path | None, version: str) -> Path: ...
+    def load_config(self, root: Path | None) -> dict: ...
