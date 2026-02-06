@@ -45,7 +45,7 @@ def run_prune_only_for_version(root: Path | None, version: str) -> tuple[bool, s
     Run only the prune: copy com/hypixel/hytale from decompiled_raw/<version> to decompiled/<version>.
     Returns (True, "") or (False, "no_raw"|"prune_failed").
     """
-    from . import i18n
+    from .. import i18n
 
     root = root or config_impl.get_project_root()
     raw_dir = config_impl.get_decompiled_raw_dir(root, version)
