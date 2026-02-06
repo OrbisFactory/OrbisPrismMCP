@@ -97,7 +97,7 @@ def run_decompile_only_for_version(root: Path | None, version: str) -> tuple[boo
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     log_path = logs_dir / f"decompile_{version}_{timestamp}.log"
 
-    from . import i18n
+    from .. import i18n
     ok, had_errors = run_jadx(jar_path, raw_dir, jadx_bin, log_path)
     if not ok:
         return (False, "jadx_failed")
