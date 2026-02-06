@@ -1,4 +1,4 @@
-# Extractor de API desde código Java descompilado (regex). Alimenta SQLite + FTS5.
+# API extractor from decompiled Java code (regex). Feeds SQLite + FTS5.
 
 import re
 from pathlib import Path
@@ -6,10 +6,10 @@ from pathlib import Path
 from . import config
 from . import db
 
-# Archivos procesados entre cada commit para reducir tamaño de transacción y memoria
+# Files processed between each commit to reduce transaction size and memory
 BATCH_COMMIT_FILES = 1000
 
-# Mismas regex que Server/Scripts/generate_api_context.py
+# Same regex as Server/Scripts/generate_api_context.py
 RE_PACKAGE = re.compile(r"package\s+([\w\.]+);")
 RE_CLASS = re.compile(r"public\s+(class|interface|record|enum)\s+(\w+)")
 RE_METHOD = re.compile(
@@ -19,9 +19,9 @@ RE_METHOD = re.compile(
 
 def _extract_from_java(content: str, file_path: str) -> list[tuple[str, str, str, list[dict]]]:
     """
-    Extrae de un archivo Java: package, class_name, kind y lista de métodos.
-    Devuelve una lista de tuplas (package, class_name, kind, methods) por cada clase/interface/record/enum.
-    file_path se usa para guardar en la DB (relativo o absoluto).
+    Extract from a Java file: package, class_name, kind and list of methods.
+    Returns a list of tuples (package, class_name, kind, methods) per class/interface/record/enum.
+    file_path is used to store in the DB (relative or absolute).
     """
     pkg_match = RE_PACKAGE.search(content)
     if not pkg_match:
@@ -39,7 +39,7 @@ def _extract_from_java(content: str, file_path: str) -> list[tuple[str, str, str
             ret_type = m.group(3)
             m_name = m.group(4)
             params = m.group(5).strip()
-            if m_name != c_name:  # Excluir constructor
+            if m_name != c_name:  # Exclude constructor
                 methods.append({
                     "method": m_name,
                     "returns": ret_type,
@@ -53,9 +53,9 @@ def _extract_from_java(content: str, file_path: str) -> list[tuple[str, str, str
 
 def run_index(root: Path | None = None, version: str = "release") -> tuple[bool, str | tuple[int, int]]:
     """
-    Recorre workspace/decompiled/<version>, extrae clases y métodos con regex,
-    y rellena prism_api_<version>.db. Devuelve (True, (num_clases, num_metodos));
-    (False, "no_decompiled") si no hay código; (False, "db_error") si falla la DB.
+    Walk workspace/decompiled/<version>, extract classes and methods with regex,
+    and fill prism_api_<version>.db. Returns (True, (num_classes, num_methods));
+    (False, "no_decompiled") if no code; (False, "db_error") if DB fails.
     """
     root = root or config.get_project_root()
     decompiled_dir = config.get_decompiled_dir(root, version)
@@ -76,7 +76,7 @@ def run_index(root: Path | None = None, version: str = "release") -> tuple[bool,
                     content = jpath.read_text(encoding="utf-8", errors="replace")
                 except OSError:
                     continue
-                # Ruta relativa al directorio descompilado para almacenar
+                # Relative path to decompiled directory for storage
                 try:
                     rel_path = jpath.relative_to(decompiled_dir)
                 except ValueError:

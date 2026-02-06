@@ -1,7 +1,7 @@
-# Servidor MCP para Orbis Prism (SDK oficial: https://github.com/modelcontextprotocol/python-sdk).
-# Expone el tool prism_search para buscar en la API indexada de Hytale.
-# Compatible con mcp>=1.0 (v1.x usa FastMCP; v2 usa MCPServer).
-# Transporte: stdio (por defecto) o streamable-http (útil para Docker).
+# MCP server for Orbis Prism (official SDK: https://github.com/modelcontextprotocol/python-sdk).
+# Exposes prism_* tools to search the indexed Hytale API.
+# Compatible with mcp>=1.0 (v1.x uses FastMCP; v2 uses MCPServer).
+# Transport: stdio (default) or streamable-http (useful for Docker).
 
 import json
 
@@ -9,6 +9,7 @@ from mcp.server.fastmcp import FastMCP
 
 from . import config
 from . import db
+from . import i18n
 from . import search
 
 
@@ -21,9 +22,9 @@ def _run_search(
     unique_classes: bool = False,
 ) -> str:
     """
-    Ejecuta búsqueda FTS5 mediante la capa de acceso (search.search_api).
-    package_prefix y kind son filtros opcionales. unique_classes: una entrada por clase con method_count.
-    Devuelve JSON string o dict de error.
+    Run FTS5 search via the access layer (search.search_api).
+    package_prefix and kind are optional filters. unique_classes: one entry per class with method_count.
+    Returns JSON string or error dict.
     """
     if version not in config.VALID_SERVER_VERSIONS:
         version = "release"
@@ -47,7 +48,7 @@ def _run_search(
 
 
 def _parse_fqcn(fqcn: str) -> tuple[str, str] | None:
-    """Si fqcn es 'com.hypixel.hytale.server.GameManager', devuelve ('com.hypixel.hytale.server', 'GameManager'). None si no hay al menos un punto."""
+    """If fqcn is 'com.hypixel.hytale.server.GameManager', returns ('com.hypixel.hytale.server', 'GameManager'). None if there is no dot."""
     s = (fqcn or "").strip()
     if not s or "." not in s:
         return None
@@ -61,7 +62,7 @@ def _run_get_class(
     class_name: str | None = None,
     fqcn: str | None = None,
 ) -> str:
-    """Devuelve la clase exacta (package, class_name, kind, file_path) y todos sus métodos. Si se pasa fqcn, se deriva package y class_name. JSON o error."""
+    """Return the exact class (package, class_name, kind, file_path) and all its methods. If fqcn is passed, package and class_name are derived. JSON or error."""
     if version not in config.VALID_SERVER_VERSIONS:
         version = "release"
     p = (package or "").strip()
@@ -90,7 +91,7 @@ def _run_list_classes(
     limit: int = 100,
     offset: int = 0,
 ) -> str:
-    """Lista clases por paquete exacto o por prefijo. limit/offset para paginación. JSON: version, package_prefix, prefix_match, count, classes."""
+    """List classes by exact package or prefix. limit/offset for pagination. JSON: version, package_prefix, prefix_match, count, classes."""
     if version not in config.VALID_SERVER_VERSIONS:
         version = "release"
     p = (package_prefix or "").strip()
@@ -114,7 +115,7 @@ def _run_list_classes(
 
 
 def _run_context_list() -> str:
-    """Devuelve versiones indexadas y versión activa. JSON: indexed, active."""
+    """Return indexed versions and active version. JSON: indexed, active."""
     root = config.get_project_root()
     cfg = config.load_config(root)
     active = cfg.get(config.CONFIG_KEY_ACTIVE_SERVER) or "release"
@@ -126,7 +127,7 @@ def _run_context_list() -> str:
 
 
 def _run_index_stats(version: str | None) -> str:
-    """Devuelve número de clases y métodos para la versión (o activa). JSON o error."""
+    """Return number of classes and methods for the version (or active). JSON or error."""
     root = config.get_project_root()
     if version is not None and version not in config.VALID_SERVER_VERSIONS:
         version = "release"
@@ -150,7 +151,7 @@ def _run_index_stats(version: str | None) -> str:
 
 
 def _run_fts_help() -> str:
-    """Devuelve texto fijo con sintaxis FTS5 para prism_search."""
+    """Return fixed text with FTS5 syntax for prism_search."""
     return (
         "FTS5 search syntax (prism_search):\n"
         "- Single word: matches that token.\n"
@@ -168,7 +169,7 @@ def _run_read_source(
     start_line: int | None = None,
     end_line: int | None = None,
 ) -> str:
-    """Lee el contenido de un archivo Java descompilado. Valida path traversal. start_line/end_line son 1-based; si se pasan, se devuelve solo ese rango y total_lines."""
+    """Read the contents of a decompiled Java file. Validates path traversal. start_line/end_line are 1-based; if provided, returns only that range and total_lines."""
     if version not in config.VALID_SERVER_VERSIONS:
         version = "release"
     path_str = (file_path or "").strip().replace("\\", "/").lstrip("/")
@@ -201,7 +202,7 @@ def _run_read_source(
 
 
 def _run_get_method(version: str, package: str, class_name: str, method_name: str) -> str:
-    """Devuelve la clase y los métodos de esa clase cuyo nombre coincide con method_name (coincidencia exacta, incluye sobrecargas). JSON o error."""
+    """Return the class and methods of that class whose name matches method_name (exact match, includes overloads). JSON or error."""
     if version not in config.VALID_SERVER_VERSIONS:
         version = "release"
     if not (package or "").strip() or not (class_name or "").strip() or not (method_name or "").strip():
@@ -218,9 +219,8 @@ def _run_get_method(version: str, package: str, class_name: str, method_name: st
 
 
 def _register_tools(app: FastMCP) -> None:
-    """Registra las tools prism_* en la instancia FastMCP dada."""
+    """Register prism_* tools on the given FastMCP instance with localized descriptions."""
 
-    @app.tool()
     def prism_search(
         query: str,
         version: str = "release",
@@ -229,26 +229,25 @@ def _register_tools(app: FastMCP) -> None:
         kind: str | None = None,
         unique_classes: bool = False,
     ) -> str:
-        """Search the indexed Hytale API (FTS5). Returns matching methods (or one row per class if unique_classes=True) with file_path for source code.
-        FTS5 syntax: single word or quoted phrase; multiple terms: term1 AND term2; OR for alternatives. Use prism_fts_help for full syntax.
-        Optional: package_prefix (e.g. com.hypixel.hytale.server), kind (class, interface, record, enum), unique_classes (one entry per class with method_count).
-        For exact class when you know FQCN, prefer prism_get_class."""
         if not query or not str(query).strip():
             return json.dumps({"error": "missing_query", "message": "query is required"}, ensure_ascii=False)
         limit = max(1, min(int(limit), 500)) if limit is not None else 30
         return _run_search(query, version=version, limit=limit, package_prefix=package_prefix, kind=kind, unique_classes=unique_classes)
 
-    @app.tool()
+    prism_search.__doc__ = i18n.t("mcp.tools.prism_search.description")
+    app.tool()(prism_search)
+
     def prism_get_class(
         version: str,
         package: str | None = None,
         class_name: str | None = None,
         fqcn: str | None = None,
     ) -> str:
-        """Get the exact class by package and class name (or by fqcn, e.g. com.hypixel.hytale.server.GameManager) with all its methods. Returns package, class_name, kind, file_path, and methods list (method, returns, params, is_static, annotation). Provide either (package + class_name) or fqcn."""
         return _run_get_class(version, package=package, class_name=class_name, fqcn=fqcn)
 
-    @app.tool()
+    prism_get_class.__doc__ = i18n.t("mcp.tools.prism_get_class.description")
+    app.tool()(prism_get_class)
+
     def prism_list_classes(
         version: str,
         package_prefix: str,
@@ -256,41 +255,48 @@ def _register_tools(app: FastMCP) -> None:
         limit: int = 100,
         offset: int = 0,
     ) -> str:
-        """List all classes in a package. package_prefix is the full package (e.g. com.hypixel.hytale.server). If prefix_match is True, includes subpackages. Use limit (default 100, max 500) and offset for pagination. Returns version, package_prefix, count, and classes (package, class_name, kind, file_path)."""
         return _run_list_classes(version, package_prefix, prefix_match, limit=limit, offset=offset)
 
-    @app.tool()
+    prism_list_classes.__doc__ = i18n.t("mcp.tools.prism_list_classes.description")
+    app.tool()(prism_list_classes)
+
     def prism_context_list() -> str:
-        """List indexed server versions (release, prerelease) and the active context. Use to discover what is available before searching."""
         return _run_context_list()
 
-    @app.tool()
+    prism_context_list.__doc__ = i18n.t("mcp.tools.prism_context_list.description")
+    app.tool()(prism_context_list)
+
     def prism_index_stats(version: str | None = None) -> str:
-        """Return the number of indexed classes and methods for a version. If version is omitted, uses the active context."""
         return _run_index_stats(version)
 
-    @app.tool()
+    prism_index_stats.__doc__ = i18n.t("mcp.tools.prism_index_stats.description")
+    app.tool()(prism_index_stats)
+
     def prism_read_source(
         version: str,
         file_path: str,
         start_line: int | None = None,
         end_line: int | None = None,
     ) -> str:
-        """Read the contents of a decompiled Java source file. file_path is the relative path from the decompiled directory (e.g. from prism_search result). Optional start_line and end_line (1-based) return only that range; response includes total_lines and the requested range."""
         return _run_read_source(version, file_path, start_line=start_line, end_line=end_line)
 
-    @app.tool()
+    prism_read_source.__doc__ = i18n.t("mcp.tools.prism_read_source.description")
+    app.tool()(prism_read_source)
+
     def prism_get_method(version: str, package: str, class_name: str, method_name: str) -> str:
-        """Get methods of a class that match the given method name (exact match; includes overloads with different params). Returns package, class_name, kind, file_path, and methods list (method, returns, params, is_static, annotation). Use when you need a specific method of a known class."""
         return _run_get_method(version, package, class_name, method_name)
 
-    @app.tool()
+    prism_get_method.__doc__ = i18n.t("mcp.tools.prism_get_method.description")
+    app.tool()(prism_get_method)
+
     def prism_fts_help() -> str:
-        """Return a short reference for FTS5 search syntax used by prism_search: single word, quoted phrase, AND/OR, prefix, and examples."""
         return _run_fts_help()
 
+    prism_fts_help.__doc__ = i18n.t("mcp.tools.prism_fts_help.description")
+    app.tool()(prism_fts_help)
 
-# Instancia por defecto para stdio (host/port no se usan)
+
+# Default instance for stdio (host/port unused)
 mcp = FastMCP("orbis-prism")
 _register_tools(mcp)
 
@@ -301,8 +307,8 @@ def run(
     port: int = 8000,
 ) -> None:
     """
-    Arranca el servidor MCP. Por defecto usa transporte stdio.
-    Si transport es "streamable-http", escucha en host:port (útil para Docker).
+    Start the MCP server. Uses stdio transport by default.
+    If transport is "streamable-http", listens on host:port (useful for Docker).
     """
     if transport == "streamable-http":
         app = FastMCP("orbis-prism", host=host, port=port)
@@ -316,4 +322,4 @@ def run(
         else:
             server_to_run.run()
     except KeyboardInterrupt:
-        pass  # Salida limpia al cerrar (Ctrl+C o cliente desconecta)
+        pass  # Clean exit on close (Ctrl+C or client disconnect)

@@ -89,5 +89,13 @@
   "cli.context.use.invalid": "Versión no válida. Usa release o prerelease.",
   "cli.context.use.not_indexed": "El contexto {version} no está indexado. Ejecuta prism index {version}.",
   "cli.help.context_list_desc": "Lista contextos indexados y el activo.",
-  "cli.help.context_use_desc": "Establece el contexto activo (release o prerelease)."
+  "cli.help.context_use_desc": "Establece el contexto activo (release o prerelease).",
+  "mcp.tools.prism_search.description": "Busca en la API indexada de Hytale (FTS5). Devuelve métodos que coinciden (o una fila por clase si unique_classes=True) con file_path para el código fuente. Sintaxis FTS5: palabra o frase entre comillas; varios términos: term1 AND term2; OR para alternativas. Usa prism_fts_help para la sintaxis completa. Opcional: package_prefix (ej. com.hypixel.hytale.server), kind (class, interface, record, enum), unique_classes (una entrada por clase con method_count). Para una clase exacta cuando conoces el FQCN, usa prism_get_class.",
+  "mcp.tools.prism_get_class.description": "Obtiene la clase exacta por paquete y nombre de clase (o por fqcn, ej. com.hypixel.hytale.server.GameManager) con todos sus métodos. Devuelve package, class_name, kind, file_path y lista de methods (method, returns, params, is_static, annotation). Indica (package + class_name) o fqcn.",
+  "mcp.tools.prism_list_classes.description": "Lista todas las clases de un paquete. package_prefix es el paquete completo (ej. com.hypixel.hytale.server). Si prefix_match es True, incluye subpaquetes. Usa limit (por defecto 100, máx 500) y offset para paginación. Devuelve version, package_prefix, count y classes (package, class_name, kind, file_path).",
+  "mcp.tools.prism_context_list.description": "Lista versiones de servidor indexadas (release, prerelease) y el contexto activo. Úsalo para ver qué hay disponible antes de buscar.",
+  "mcp.tools.prism_index_stats.description": "Devuelve el número de clases y métodos indexados para una versión. Si se omite version, usa el contexto activo.",
+  "mcp.tools.prism_read_source.description": "Lee el contenido de un archivo Java descompilado. file_path es la ruta relativa al directorio descompilado (ej. resultado de prism_search). start_line y end_line opcionales (1-based) devuelven solo ese rango; la respuesta incluye total_lines y el rango solicitado.",
+  "mcp.tools.prism_get_method.description": "Obtiene los métodos de una clase que coinciden con el nombre dado (coincidencia exacta; incluye sobrecargas con distintos params). Devuelve package, class_name, kind, file_path y lista de methods. Úsalo cuando necesites un método concreto de una clase conocida.",
+  "mcp.tools.prism_fts_help.description": "Devuelve una referencia breve de la sintaxis FTS5 usada por prism_search: palabra, frase entre comillas, AND/OR, prefijo y ejemplos."
 }

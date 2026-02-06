@@ -1,5 +1,5 @@
-# Capa de acceso a búsqueda: resuelve root/versión, abre DB y ejecuta FTS5.
-# Unifica la lógica usada por CLI y MCP para evitar duplicación y facilitar cambios futuros.
+# Search access layer: resolves root/version, opens DB and runs FTS5.
+# Unifies logic used by CLI and MCP to avoid duplication and ease future changes.
 
 import sqlite3
 from pathlib import Path
@@ -19,14 +19,14 @@ def search_api(
     unique_classes: bool = False,
 ) -> tuple[list[dict], dict | None]:
     """
-    Ejecuta búsqueda FTS5 en la DB de la versión indicada.
-    Resuelve raíz del proyecto y ruta de la DB; abre/cierra conexión con context manager.
-    package_prefix y kind son filtros opcionales. unique_classes: si True, una entrada por clase (con method_count).
+    Run FTS5 search on the DB for the given version.
+    Resolves project root and DB path; opens/closes connection with context manager.
+    package_prefix and kind are optional filters. unique_classes: if True, one entry per class (with method_count).
 
-    Devuelve:
-        (lista de resultados, None) en éxito. Si unique_classes=False: package, class_name, kind, method_name, returns, params, file_path.
-        Si unique_classes=True: package, class_name, kind, file_path, method_count.
-        ([], dict de error) en fallo.
+    Returns:
+        (result list, None) on success. If unique_classes=False: package, class_name, kind, method_name, returns, params, file_path.
+        If unique_classes=True: package, class_name, kind, file_path, method_count.
+        ([], error dict) on failure.
     """
     root = root or config.get_project_root()
     if version not in config.VALID_SERVER_VERSIONS:
@@ -47,7 +47,7 @@ def search_api(
                 conn, term, limit=limit, package_prefix=package_prefix, kind=kind, unique_classes=unique_classes
             )
         if unique_classes:
-            # search_fts ya devuelve list[dict] con package, class_name, kind, file_path, method_count
+            # search_fts already returns list[dict] with package, class_name, kind, file_path, method_count
             results = list(rows)
         else:
             results = [

@@ -1,4 +1,4 @@
-# CLI Orbis Prism: subcomandos init, decompile, index, mcp, context, lang.
+# CLI Orbis Prism: subcommands init, decompile, index, mcp, context, lang.
 
 import json
 import os
@@ -14,14 +14,14 @@ from . import i18n
 from . import prune
 from . import search
 
-# Flag para "todas las versiones" en build, decompile, index
+# Flag for "all versions" in build, decompile, index
 VERSION_FLAG_ALL = ("--all", "-a")
 
-# Flags para query
+# Flags for query
 QUERY_JSON_FLAGS = ("--json", "-j")
 QUERY_LIMIT_FLAGS = ("--limit", "-n")
 
-# Flags para mcp (transporte HTTP)
+# Flags for mcp (HTTP transport)
 MCP_HTTP_FLAGS = ("--http", "-H")
 MCP_PORT_FLAGS = ("--port", "-p")
 MCP_HOST_FLAGS = ("--host",)
@@ -32,9 +32,9 @@ ENV_MCP_HOST = "MCP_HOST"
 
 def _parse_query_args(args: list[str]) -> tuple[str | None, str, int, bool]:
     """
-    Parsea args del comando query (desde args[1]).
-    Devuelve (query_term, version, limit, output_json).
-    query_term None si no se dio término.
+    Parse args for the query command (from args[1]).
+    Returns (query_term, version, limit, output_json).
+    query_term is None if no term was given.
     """
     output_json = False
     limit = 30
@@ -69,9 +69,9 @@ def _parse_query_args(args: list[str]) -> tuple[str | None, str, int, bool]:
 
 def _parse_mcp_args(args: list[str], start_index: int) -> tuple[str, str, int]:
     """
-    Parsea argumentos del comando mcp (desde args[start_index]).
-    También lee MCP_TRANSPORT, MCP_HOST, MCP_PORT (la CLI tiene prioridad sobre env).
-    Devuelve (transport, host, port). transport: "stdio" | "streamable-http".
+    Parse arguments for the mcp command (from args[start_index]).
+    Also reads MCP_TRANSPORT, MCP_HOST, MCP_PORT (CLI overrides env).
+    Returns (transport, host, port). transport: "stdio" | "streamable-http".
     """
     transport = "stdio"
     host = "0.0.0.0"
@@ -116,9 +116,9 @@ def _parse_mcp_args(args: list[str], start_index: int) -> tuple[str, str, int]:
 
 def _parse_version_arg(args: list[str], start_index: int) -> tuple[str | None, bool]:
     """
-    Parsea argumento de versión. Devuelve (version, invalid).
-    version: 'release' | 'prerelease' | None (todas). Sin argumento → default 'release'.
-    invalid: True si el argumento no es válido.
+    Parse version argument. Returns (version, invalid).
+    version: 'release' | 'prerelease' | None (all). No argument -> default 'release'.
+    invalid: True if the argument is not valid.
     """
     if len(args) <= start_index:
         return ("release", False)
@@ -131,7 +131,7 @@ def _parse_version_arg(args: list[str], start_index: int) -> tuple[str | None, b
 
 
 def _ensure_dirs(root: Path) -> None:
-    """Asegura que existan workspace/server, decompiled, db y logs."""
+    """Ensure workspace/server, decompiled, db and logs directories exist."""
     config.get_workspace_dir(root).mkdir(parents=True, exist_ok=True)
     (config.get_workspace_dir(root) / "server").mkdir(parents=True, exist_ok=True)
     config.get_decompiled_dir(root).mkdir(parents=True, exist_ok=True)
@@ -142,13 +142,13 @@ def _ensure_dirs(root: Path) -> None:
 
 def cmd_init(root: Path | None = None) -> int:
     """
-    Detecta HytaleServer.jar, valida y guarda la config en .prism.json.
-    Crea directorios workspace si no existen.
+    Detect HytaleServer.jar, validate and save config to .prism.json.
+    Create workspace directories if they do not exist.
     """
     root = root or config.get_project_root()
     _ensure_dirs(root)
 
-    # Si HYTALE_JAR_PATH está definida, validar primero y dar mensaje específico si falla
+    # If HYTALE_JAR_PATH is set, validate first and show specific message if it fails
     env_jar = os.environ.get(config.ENV_JAR_PATH)
     if env_jar:
         env_path = Path(env_jar).resolve()
@@ -169,7 +169,7 @@ def cmd_init(root: Path | None = None) -> int:
     jadx_path = detection.resolve_jadx_path(root)
     if jadx_path:
         cfg[config.CONFIG_KEY_JADX_PATH] = jadx_path
-    # Detección automática de la otra versión (release / pre-release)
+    # Auto-detect the other version (release / pre-release)
     sibling = detection.get_sibling_version_jar_path(jar_path)
     if sibling:
         if "pre-release" in str(jar_path).replace("\\", "/"):
@@ -186,7 +186,7 @@ def cmd_init(root: Path | None = None) -> int:
 
 
 def cmd_decompile(root: Path | None = None, version: str | None = None) -> int:
-    """Ejecuta JADX y poda. version=None → todas; 'release'|'prerelease' → solo esa. Por defecto (sin arg) → release."""
+    """Run JADX and prune. version=None -> all; 'release'|'prerelease' -> only that. Default (no arg) -> release."""
     root = root or config.get_project_root()
     versions = None if version is None else [version]
     print(i18n.t("cli.decompile.may_take"))
@@ -206,7 +206,7 @@ def cmd_query(
     limit: int = 30,
     output_json: bool = False,
 ) -> int:
-    """Ejecuta una búsqueda FTS5 en la DB de la versión indicada. output_json: solo imprime JSON (version, term, count, results con file_path)."""
+    """Run FTS5 search on the DB for the given version. output_json: only print JSON (version, term, count, results with file_path)."""
     root = root or config.get_project_root()
     if not query_term or not query_term.strip():
         print(i18n.t("cli.query.usage"), file=sys.stderr)
@@ -231,7 +231,7 @@ def cmd_query(
 
 
 def cmd_prune(root: Path | None = None, version: str | None = None) -> int:
-    """Ejecuta solo la poda (raw → decompiled). version=None → todas las que tengan raw; 'release'|'prerelease' → esa. Por defecto: release."""
+    """Run only the prune (raw -> decompiled). version=None -> all that have raw; 'release'|'prerelease' -> that one. Default: release."""
     root = root or config.get_project_root()
     versions = None if version is None else [version]
     success, err = prune.run_prune_only(root, versions=versions)
@@ -247,7 +247,7 @@ def cmd_prune(root: Path | None = None, version: str | None = None) -> int:
 
 
 def cmd_build(root: Path | None = None, version: str | None = None) -> int:
-    """Ejecuta decompile e index. version=None → todas; 'release'|'prerelease' → solo esa. Por defecto (sin arg) → release."""
+    """Run decompile and index. version=None -> all; 'release'|'prerelease' -> only that. Default (no arg) -> release."""
     root = root or config.get_project_root()
     versions = None if version is None else [version]
 
@@ -278,13 +278,13 @@ def cmd_build(root: Path | None = None, version: str | None = None) -> int:
 
 
 def cmd_index(root: Path | None = None, version: str | None = None) -> int:
-    """Indexa en la DB. version=None → indexa release y prerelease; 'release'|'prerelease' → solo esa. Por defecto (sin arg) → release."""
+    """Index into the DB. version=None -> index release and prerelease; 'release'|'prerelease' -> only that. Default (no arg) -> release."""
     root = root or config.get_project_root()
     if version is not None and version not in config.VALID_SERVER_VERSIONS:
         print(i18n.t("cli.context.use.invalid"), file=sys.stderr)
         return 1
     if version is None:
-        # --all: indexar ambas versiones
+        # --all: index both versions
         for v in config.VALID_SERVER_VERSIONS:
             ok, payload = extractor.run_index(root, v)
             if ok:
@@ -305,7 +305,7 @@ def cmd_index(root: Path | None = None, version: str | None = None) -> int:
 
 
 def cmd_context_list(root: Path | None = None) -> int:
-    """Lista las versiones indexadas (DB existente) y cuál está activa."""
+    """List indexed versions (existing DB) and which is active."""
     root = root or config.get_project_root()
     cfg = config.load_config(root)
     active = cfg.get(config.CONFIG_KEY_ACTIVE_SERVER) or "release"
@@ -325,7 +325,7 @@ def cmd_context_list(root: Path | None = None) -> int:
 
 
 def cmd_context_use(version_str: str, root: Path | None = None) -> int:
-    """Establece la versión activa (release o prerelease)."""
+    """Set the active version (release or prerelease)."""
     root = root or config.get_project_root()
     version = version_str.strip().lower()
     if version not in config.VALID_SERVER_VERSIONS:
@@ -346,10 +346,10 @@ def cmd_mcp(
     host: str = "0.0.0.0",
     port: int = 8000,
 ) -> int:
-    """Inicia el servidor MCP para IA. Por defecto stdio; con transport streamable-http escucha en host:port."""
+    """Start the MCP server for AI. Default stdio; with transport streamable-http listens on host:port."""
     root = _root or config.get_project_root()
-    # Solo mostrar instrucciones si stderr es una terminal (ej. usuario ejecutó a mano).
-    # Cuando Cursor lanza el proceso por stdio, stderr no es TTY y no imprimimos, para no interferir.
+    # Only show instructions if stderr is a terminal (e.g. user ran by hand).
+    # When Cursor launches the process via stdio, stderr is not a TTY and we do not print, to avoid interference.
     if sys.stderr.isatty():
         if transport == "streamable-http":
             print(i18n.t("cli.mcp.instructions_http_title"), file=sys.stderr)
@@ -377,7 +377,7 @@ def cmd_mcp(
 
 
 def cmd_lang_list(root: Path | None = None) -> int:
-    """Lista los idiomas disponibles y marca el actual."""
+    """List available languages and mark the current one."""
     root = root or config.get_project_root()
     current = i18n.get_current_locale(root)
     locales = i18n.get_available_locales()
@@ -391,7 +391,7 @@ def cmd_lang_list(root: Path | None = None) -> int:
 
 
 def cmd_config_set_jar_path(path_str: str, root: Path | None = None) -> int:
-    """Establece la ruta a HytaleServer.jar o a la carpeta raíz de Hytale (ej. %%APPDATA%%\\Hytale)."""
+    """Set the path to HytaleServer.jar or to the Hytale root folder (e.g. %%APPDATA%%\\Hytale)."""
     root = root or config.get_project_root()
     path = Path(path_str).resolve()
     cfg = config.load_config(root)
@@ -432,7 +432,7 @@ def cmd_config_set_jar_path(path_str: str, root: Path | None = None) -> int:
 
 
 def cmd_lang_set(lang_code: str, root: Path | None = None) -> int:
-    """Cambia el idioma guardado en .prism.json."""
+    """Change the language saved in .prism.json."""
     root = root or config.get_project_root()
     code = lang_code.strip().lower()
     if not code:
@@ -449,7 +449,7 @@ def cmd_lang_set(lang_code: str, root: Path | None = None) -> int:
 
 
 def print_help() -> None:
-    # Ancho fijo para alinear descripciones (comando + espacios)
+    # Fixed width to align descriptions (command + spaces)
     w = 38
     fmt = "  {:<" + str(w) + "}"
     print(i18n.t("cli.help.title"))
@@ -478,7 +478,7 @@ def print_help() -> None:
 
 
 def main() -> int:
-    """Punto de entrada del CLI."""
+    """CLI entry point."""
     args = sys.argv[1:]
     if not args or args[0] in ("-h", "--help"):
         print_help()
