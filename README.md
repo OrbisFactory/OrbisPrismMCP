@@ -33,33 +33,42 @@
    ```bash
    git clone https://github.com/SamuelCastrillon/orbis-prism.git
    cd orbis-prism
-   
-3. Install dependencies:
-   
+   ```
+
+2. Instala dependencias:
+
    ```bash
    pip install -r requirements.txt
+   ```
 
-5. Run the setup assistant:
-   
+3. Ejecuta el asistente de configuración:
+
    ```bash
    python main.py init
+   ```
 
-   
-## 🛠 CLI Commands
-- `prism decompile`: Starts the extraction and pruning of the source code.
+## 🛠 Comandos CLI
 
-- `prism index`: Analyzes .java files and populates the search index.
+| Comando | Descripción |
+|--------|-------------|
+| `prism init` | Detecta HytaleServer.jar (y release/prerelease si existen) y guarda la configuración en `.prism.json`. |
+| `prism build [release\|prerelease]` | **Flujo completo:** descompila e indexa (sobrescribe código y DB). Sin argumento: todas las versiones configuradas; con argumento: solo esa. |
+| `prism decompile [release\|prerelease]` | Descompila con JADX y poda a `workspace/decompiled/<version>`. Sin argumento: todas las versiones configuradas. |
+| `prism index [release\|prerelease]` | Indexa el código descompilado en la base SQLite (FTS5). Sin argumento, indexa el contexto activo. |
+| `prism mcp` | Inicia el servidor MCP para conectar tu IA (Fase 3). |
+| `prism context list` | Lista los contextos indexados (release/prerelease) y cuál está activo (*). |
+| `prism context use <release\|prerelease>` | Establece el contexto activo (con qué versión de la API trabajas). |
+| `prism lang list` | Lista idiomas disponibles. |
+| `prism lang set <código>` | Cambia el idioma (ej. `prism lang set en`). |
+| `prism config set game_path <ruta>` | Establece la ruta del juego (carpeta raíz o JAR). Launcher → Settings → Open Directory. |
 
-- `prism serve`: Launches the MCP bridge to connect your favorite AI.
+## 📁 Estructura del proyecto
 
-## 📁 Project Structure
-`/src`: Python orchestrator source code.
-
-`/workspace/decompiled`: The clean Hytale "Core" (Java 25).
-
-`/workspace/db`: `prism_api.db` SQLite index.
-
-`/bin`: Support binaries and external tools.
+- **`/src`**: Código fuente del orquestador (Python).
+- **`/workspace/decompiled/<version>`**: Código limpio del núcleo Hytale por versión (`release`, `prerelease`).
+- **`/workspace/decompiled_raw/<version>`**: Salida cruda de JADX antes de la poda.
+- **`/workspace/db`**: Bases SQLite por contexto (`prism_api_release.db`, `prism_api_prerelease.db`).
+- **`/bin`**: Binarios de apoyo (JADX, etc.).
 
 ## 📜 License
 This project is licensed under the MIT License. See the `LICENSE` file for more details.

@@ -1,5 +1,6 @@
 # Pipeline de descompilación: JADX y poda a com.hypixel.hytale.
 
+import sys
 import shutil
 import subprocess
 from datetime import datetime
@@ -14,12 +15,12 @@ def run_jadx(
     out_dir: Path,
     jadx_bin: str | Path,
     log_path: Path | None = None,
-) -> bool:
+) -> tuple[bool, bool]:
     """
     Ejecuta JADX sobre el JAR y escribe la salida en out_dir.
-    Opción -d out_dir -m restructure para código legible.
-    Si log_path se proporciona, se escribe stdout y stderr ahí.
-    Devuelve True si el proceso termina con código 0.
+    Muestra stdout/stderr en tiempo real; si log_path se da, lo guarda en el log.
+    Devuelve (True, had_errors): True si terminó (aunque con errores); had_errors si exit code != 0.
+    (False, False) si hubo excepción (timeout, OSError).
     """
     out_dir.mkdir(parents=True, exist_ok=True)
     cmd = [
@@ -31,46 +32,75 @@ def run_jadx(
         str(jar_path.resolve()),
     ]
     try:
-        result = subprocess.run(
+        proc = subprocess.Popen(
             cmd,
-            capture_output=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
             text=True,
             encoding="utf-8",
             errors="replace",
-            timeout=600,
+            bufsize=1,
         )
+        log_file = None
+        if log_path:
+            log_path.parent.mkdir(parents=True, exist_ok=True)
+            log_file = open(log_path, "w", encoding="utf-8")
+            log_file.write(f"Command: {' '.join(cmd)}\n\n")
+
+        try:
+            for line in proc.stdout:
+                sys.stdout.write(line)
+                sys.stdout.flush()
+                if log_file:
+                    log_file.write(line)
+                    log_file.flush()
+        finally:
+            proc.wait(timeout=600)
+            if log_file:
+                log_file.write(f"\n--- exit code: {proc.returncode} ---\n")
+                log_file.close()
+        # Aceptamos salida aunque JADX reporte errores (común en JARs grandes); la poda usa lo generado
+        return (True, proc.returncode != 0)
+    except (subprocess.TimeoutExpired, OSError):
         if log_path:
             log_path.parent.mkdir(parents=True, exist_ok=True)
             with open(log_path, "w", encoding="utf-8") as f:
-                f.write(f"Command: {' '.join(cmd)}\n\n")
-                f.write("--- stdout ---\n")
-                f.write(result.stdout or "")
-                f.write("\n--- stderr ---\n")
-                f.write(result.stderr or "")
-                f.write(f"\n--- exit code: {result.returncode} ---\n")
-        return result.returncode == 0
-    except (subprocess.TimeoutExpired, OSError):
-        if log_path:
-            with open(log_path, "w", encoding="utf-8") as f:
                 f.write("JADX execution failed (timeout or error).\n")
-        return False
+        return (False, False)
 
 
-def prune_to_core(raw_dir: Path, dest_dir: Path) -> None:
+# Subdirectorios donde JADX puede dejar las fuentes (según versión)
+_PRUNE_SOURCE_CANDIDATES = (
+    "sources",  # Muchas versiones de JADX usan -d y escriben en <out>/sources/
+    "",        # O directamente en la raíz de -d
+)
+
+
+def prune_to_core(raw_dir: Path, dest_dir: Path) -> tuple[bool, dict | None]:
     """
     Copia solo la rama com/hypixel/hytale desde raw_dir a dest_dir.
-    dest_dir queda con la estructura com/hypixel/hytale/...; el resto se descarta.
+    Prueba raw_dir/sources/com/hypixel/hytale y raw_dir/com/hypixel/hytale.
+    Devuelve (True, {"files": N, "source_subdir": "sources"|""}) o (False, None) si no existe.
     """
     core_rel = config.CORE_PACKAGE_PATH  # "com/hypixel/hytale"
-    source_core = raw_dir / core_rel
-    if not source_core.is_dir():
-        dest_dir.mkdir(parents=True, exist_ok=True)
-        return
+    source_core = None
+    source_subdir = None
+    for sub in _PRUNE_SOURCE_CANDIDATES:
+        candidate = (raw_dir / sub / core_rel) if sub else (raw_dir / core_rel)
+        if candidate.is_dir():
+            source_core = candidate
+            source_subdir = sub or "."
+            break
+    if source_core is None:
+        return (False, None)
     target = dest_dir / core_rel
     if dest_dir.exists():
         shutil.rmtree(dest_dir)
     dest_dir.mkdir(parents=True, exist_ok=True)
     shutil.copytree(source_core, target)
+    # Contar solo archivos .java para el log
+    file_count = sum(1 for _ in source_core.rglob("*.java"))
+    return (True, {"files": file_count, "source_subdir": source_subdir})
 
 
 def run_decompile_and_prune_for_version(root: Path | None, version: str) -> tuple[bool, str]:
@@ -103,10 +133,19 @@ def run_decompile_and_prune_for_version(root: Path | None, version: str) -> tupl
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     log_path = logs_dir / f"decompile_{version}_{timestamp}.log"
 
-    if not run_jadx(jar_path, raw_dir, jadx_bin, log_path):
+    from . import i18n
+    ok, had_errors = run_jadx(jar_path, raw_dir, jadx_bin, log_path)
+    if not ok:
         return (False, "jadx_failed")
+    if had_errors:
+        print(i18n.t("cli.decompile.jadx_finished_with_errors"), file=sys.stderr)
 
-    prune_to_core(raw_dir, decompiled_dir)
+    # Poda: raw -> decompiled (solo com.hypixel.hytale), con log
+    ok_prune, stats = prune_to_core(raw_dir, decompiled_dir)
+    if not ok_prune:
+        print(i18n.t("cli.prune.no_core", raw_dir=raw_dir), file=sys.stderr)
+        return (False, "prune_failed")
+    print(i18n.t("cli.prune.done", files=stats["files"], dest=decompiled_dir, subdir=stats["source_subdir"]))
     return (True, "")
 
 
@@ -136,6 +175,50 @@ def run_decompile_and_prune(
 
     for version in versions:
         ok, err = run_decompile_and_prune_for_version(root, version)
+        if not ok:
+            return (False, err)
+    return (True, "")
+
+
+def run_prune_only_for_version(root: Path | None, version: str) -> tuple[bool, str]:
+    """
+    Ejecuta solo la poda: copia com/hypixel/hytale desde decompiled_raw/<version> a decompiled/<version>.
+    Devuelve (True, "") o (False, "no_raw"|"prune_failed").
+    """
+    from . import i18n
+
+    root = root or config.get_project_root()
+    raw_dir = config.get_decompiled_raw_dir(root, version)
+    decompiled_dir = config.get_decompiled_dir(root, version)
+    if not raw_dir.is_dir():
+        return (False, "no_raw")
+    print(i18n.t("cli.prune.running", version=version, raw_dir=raw_dir))
+    ok, stats = prune_to_core(raw_dir, decompiled_dir)
+    if not ok:
+        print(i18n.t("cli.prune.no_core", raw_dir=raw_dir), file=sys.stderr)
+        return (False, "prune_failed")
+    print(i18n.t("cli.prune.done", files=stats["files"], dest=decompiled_dir, subdir=stats["source_subdir"]))
+    return (True, "")
+
+
+def run_prune_only(
+    root: Path | None = None,
+    versions: list[str] | None = None,
+) -> tuple[bool, str]:
+    """
+    Ejecuta solo la poda para una o más versiones.
+    Si versions es None, procesa las que tengan carpeta decompiled_raw existente.
+    """
+    root = root or config.get_project_root()
+    if versions is None:
+        versions = [
+            v for v in config.VALID_SERVER_VERSIONS
+            if config.get_decompiled_raw_dir(root, v).is_dir()
+        ]
+        if not versions:
+            return (False, "no_raw")
+    for version in versions:
+        ok, err = run_prune_only_for_version(root, version)
         if not ok:
             return (False, err)
     return (True, "")

@@ -10,6 +10,25 @@ from . import detection
 from . import extractor
 from . import i18n
 
+# Flag para "todas las versiones" en build, decompile, index
+VERSION_FLAG_ALL = ("--all", "-a")
+
+
+def _parse_version_arg(args: list[str], start_index: int) -> tuple[str | None, bool]:
+    """
+    Parsea argumento de versión. Devuelve (version, invalid).
+    version: 'release' | 'prerelease' | None (todas). Sin argumento → default 'release'.
+    invalid: True si el argumento no es válido.
+    """
+    if len(args) <= start_index:
+        return ("release", False)
+    a = args[start_index].strip().lower()
+    if a in VERSION_FLAG_ALL:
+        return (None, False)
+    if a in config.VALID_SERVER_VERSIONS:
+        return (a, False)
+    return (None, True)
+
 
 def _ensure_dirs(root: Path) -> None:
     """Asegura que existan workspace/server, decompiled, db y logs."""
@@ -66,10 +85,12 @@ def cmd_init(root: Path | None = None) -> int:
     return 0
 
 
-def cmd_decompile(root: Path | None = None) -> int:
-    """Ejecuta JADX sobre los JARs configurados y poda a workspace/decompiled/<version>."""
+def cmd_decompile(root: Path | None = None, version: str | None = None) -> int:
+    """Ejecuta JADX y poda. version=None → todas; 'release'|'prerelease' → solo esa. Por defecto (sin arg) → release."""
     root = root or config.get_project_root()
-    success, err = decompile.run_decompile_and_prune(root, versions=None)
+    versions = None if version is None else [version]
+    print(i18n.t("cli.decompile.may_take"))
+    success, err = decompile.run_decompile_and_prune(root, versions=versions)
     if success:
         print(i18n.t("cli.decompile.success"))
         return 0
@@ -78,16 +99,70 @@ def cmd_decompile(root: Path | None = None) -> int:
     return 1
 
 
-def cmd_index(root: Path | None = None, version: str | None = None) -> int:
-    """Indexa el código de una versión en su DB. Si no se pasa versión, usa la activa."""
+def cmd_prune(root: Path | None = None, version: str | None = None) -> int:
+    """Ejecuta solo la poda (raw → decompiled). version=None → todas las que tengan raw; 'release'|'prerelease' → esa. Por defecto: release."""
     root = root or config.get_project_root()
-    if version is not None:
-        if version not in config.VALID_SERVER_VERSIONS:
-            print(i18n.t("cli.context.use.invalid"), file=sys.stderr)
+    versions = None if version is None else [version]
+    success, err = decompile.run_prune_only(root, versions=versions)
+    if success:
+        if version:
+            print(i18n.t("cli.prune.success", version=version))
+        else:
+            print(i18n.t("cli.prune.completed_all"))
+        return 0
+    key = f"cli.prune.{err}"
+    print(i18n.t(key), file=sys.stderr)
+    return 1
+
+
+def cmd_build(root: Path | None = None, version: str | None = None) -> int:
+    """Ejecuta decompile e index. version=None → todas; 'release'|'prerelease' → solo esa. Por defecto (sin arg) → release."""
+    root = root or config.get_project_root()
+    versions = None if version is None else [version]
+
+    print(i18n.t("cli.build.phase_decompile"))
+    print(i18n.t("cli.decompile.may_take"))
+    success, err = decompile.run_decompile_and_prune(root, versions=versions)
+    if not success:
+        print(i18n.t("cli.build.decompile_failed"), file=sys.stderr)
+        print(i18n.t(f"cli.decompile.{err}"), file=sys.stderr)
+        return 1
+    print(i18n.t("cli.build.phase_decompile_done"))
+
+    to_index = list(config.VALID_SERVER_VERSIONS) if version is None else [version]
+    print(i18n.t("cli.build.phase_index"))
+    for v in to_index:
+        print(i18n.t("cli.build.indexing_version", version=v))
+        ok, payload = extractor.run_index(root, v)
+        if ok:
+            classes, methods = payload
+            print(i18n.t("cli.build.indexed", version=v, classes=classes, methods=methods))
+        elif payload == "no_decompiled":
+            print(i18n.t("cli.build.skipped_no_code", version=v))
+        else:
+            print(i18n.t("cli.index.db_error"), file=sys.stderr)
             return 1
-    else:
-        cfg = config.load_config(root)
-        version = cfg.get(config.CONFIG_KEY_ACTIVE_SERVER) or "release"
+    print(i18n.t("cli.build.success"))
+    return 0
+
+
+def cmd_index(root: Path | None = None, version: str | None = None) -> int:
+    """Indexa en la DB. version=None → indexa release y prerelease; 'release'|'prerelease' → solo esa. Por defecto (sin arg) → release."""
+    root = root or config.get_project_root()
+    if version is not None and version not in config.VALID_SERVER_VERSIONS:
+        print(i18n.t("cli.context.use.invalid"), file=sys.stderr)
+        return 1
+    if version is None:
+        # --all: indexar ambas versiones
+        for v in config.VALID_SERVER_VERSIONS:
+            ok, payload = extractor.run_index(root, v)
+            if ok:
+                classes, methods = payload
+                print(i18n.t("cli.index.success", classes=classes, methods=methods, version=v))
+            elif payload != "no_decompiled":
+                print(i18n.t("cli.index.db_error"), file=sys.stderr)
+                return 1
+        return 0
     success, payload = extractor.run_index(root, version)
     if success:
         classes, methods = payload
@@ -214,21 +289,29 @@ def cmd_lang_set(lang_code: str, root: Path | None = None) -> int:
 
 
 def print_help() -> None:
+    # Ancho fijo para alinear descripciones (comando + espacios)
+    w = 38
+    fmt = "  {:<" + str(w) + "}"
     print(i18n.t("cli.help.title"))
     print()
     print(i18n.t("cli.help.usage"))
     print()
     print(i18n.t("cli.help.commands"))
-    print("  init       ", i18n.t("cli.help.init_desc"))
-    print("  decompile  ", i18n.t("cli.help.decompile_desc"))
-    print("  index [release|prerelease]  ", i18n.t("cli.help.index_desc"))
-    print("  mcp        ", i18n.t("cli.help.mcp_desc"))
-    print("  context list  ", i18n.t("cli.help.context_list_desc"))
-    print("  context use <release|prerelease>  ", i18n.t("cli.help.context_use_desc"))
-    print("  lang list   ", i18n.t("cli.help.lang_list_desc"))
-    print("  lang set <código>  ", i18n.t("cli.help.lang_set_desc"))
-    print("  config set game_path <ruta>  ", i18n.t("cli.help.config_set_jar_desc"))
-    print("      ", i18n.t("cli.help.config_set_jar_hint"))
+    print(fmt.format("init") + i18n.t("cli.help.init_desc"))
+    print(fmt.format("build [release|prerelease|--all|-a]") + i18n.t("cli.help.build_desc"))
+    print(fmt.format("decompile [release|prerelease|--all|-a]") + i18n.t("cli.help.decompile_desc"))
+    print(fmt.format("prune [release|prerelease|--all|-a]") + i18n.t("cli.help.prune_desc"))
+    print(fmt.format("index [release|prerelease|--all|-a]") + i18n.t("cli.help.index_desc"))
+    print(fmt.format("mcp") + i18n.t("cli.help.mcp_desc"))
+    print()
+    print(fmt.format("context list") + i18n.t("cli.help.context_list_desc"))
+    print(fmt.format("context use <release|prerelease>") + i18n.t("cli.help.context_use_desc"))
+    print()
+    print(fmt.format("lang list") + i18n.t("cli.help.lang_list_desc"))
+    print(fmt.format("lang set <código>") + i18n.t("cli.help.lang_set_desc"))
+    print()
+    print(fmt.format("config set game_path <ruta>") + i18n.t("cli.help.config_set_jar_desc"))
+    print(fmt.format("") + i18n.t("cli.help.config_set_jar_hint"))
     print()
     print(i18n.t("cli.help.example"))
 
@@ -253,11 +336,30 @@ def main() -> int:
             return 1
         print_help()
         return 0
+    if subcommand == "build":
+        version_arg, invalid = _parse_version_arg(args, 2)
+        if invalid:
+            print(i18n.t("cli.context.use.invalid"), file=sys.stderr)
+            return 1
+        return cmd_build(root, version=version_arg)
     if subcommand == "decompile":
-        return cmd_decompile(root)
+        version_arg, invalid = _parse_version_arg(args, 2)
+        if invalid:
+            print(i18n.t("cli.context.use.invalid"), file=sys.stderr)
+            return 1
+        return cmd_decompile(root, version=version_arg)
     if subcommand == "index":
-        version_arg = args[2] if len(args) > 2 else None
+        version_arg, invalid = _parse_version_arg(args, 2)
+        if invalid:
+            print(i18n.t("cli.context.use.invalid"), file=sys.stderr)
+            return 1
         return cmd_index(root, version=version_arg)
+    if subcommand == "prune":
+        version_arg, invalid = _parse_version_arg(args, 1)
+        if invalid:
+            print(i18n.t("cli.context.use.invalid"), file=sys.stderr)
+            return 1
+        return cmd_prune(root, version=version_arg)
     if subcommand == "mcp":
         return cmd_mcp(root)
 
