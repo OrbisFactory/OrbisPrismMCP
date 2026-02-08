@@ -13,6 +13,24 @@
 
 ---
 
+## 📑 Contents
+
+- [✨ Main features](#-main-features)
+- [🌐 Language / Idioma](#-language--idioma)
+- [🚀 Quick start](#-quick-start)
+  - [Requirements](#requirements)
+  - [Initial command (first time)](#initial-command-first-time)
+  - [Where HytaleServer.jar is detected](#where-hytaleserverjar-is-detected)
+  - [Installation](#installation)
+- [🛠 CLI commands](#-cli-commands)
+- [📁 Project structure](#-project-structure)
+- [🔌 Configuring the MCP server](#-configuring-the-mcp-server)
+  - [stdio mode (default)](#stdio-mode-default)
+  - [HTTP / Docker mode](#http--docker-mode)
+- [📚 See also](#-see-also)
+- [🤝 Contributing](#-contributing)
+- [📜 License](#-license)
+
 ## ✨ Main features
 
 - **Auto-detection:** Locates the official installation on Windows (`%APPDATA%\Hytale\install\...\Server`). You can override the path with `python main.py config_impl set game_path <path>`.
@@ -44,7 +62,7 @@ After running `lang set <code>`, subsequent CLI messages will use that language.
 
 ### Initial command (first time)
 
-The command to run when getting started is **`python main.py ctx init`** (or `context init`). It detects the Hytale JAR, decompiles, prunes, and indexes the API into SQLite. If the JAR is not detected, run **`python main.py ctx detect`** first so Orbis Prism can locate `HytaleServer.jar` and save the configuration to `.prism.json`.
+The command to run when getting started is **`python main.py ctx init`** (or `context init`). It runs detect first (locates the Hytale JAR and saves config), then decompiles, prunes, and indexes the API into SQLite. If the JAR is not found, run **`python main.py ctx detect`** from the expected install path, or set the path manually (see below).
 
 ### Where HytaleServer.jar is detected
 
@@ -57,8 +75,8 @@ The command to run when getting started is **`python main.py ctx init`** (or `co
 1. Clone the repository:
 
    ```bash
-   git clone https://github.com/SamuelCastrillon/orbis-prism.git
-   cd orbis-prism
+   git clone https://github.com/OrbisFactory/OrbisPrismMCP.git
+   cd OrbisPrismMCP
    ```
 
 2. Install dependencies:
@@ -83,11 +101,11 @@ The command to run when getting started is **`python main.py ctx init`** (or `co
 
 ## 🛠 CLI commands
 
-The recommended **initial** command is **`python main.py ctx init`** (or `context init`): it detects the JAR if needed, decompiles, prunes, and indexes. You can use `ctx` as a shorthand for `context`.
+The recommended **initial** command is **`python main.py ctx init`** (or `context init`): it runs detect at the start, then decompiles, prunes, and indexes. You can use `ctx` as a shorthand for `context`.
 
-| Command                                                     | Description                                                                                                   |
-| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| `python main.py ctx init [release\|prerelease\|--all]`      | **Initial command.** Full pipeline: detects JAR if missing, decompiles (JADX), prunes, and indexes to SQLite. |
+| Command                                                     | Description                                                                                                        |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `python main.py ctx init [release\|prerelease\|--all]`      | **Initial command.** Full pipeline: runs detect, then decompiles (JADX), prunes, and indexes to SQLite.             |
 | `python main.py ctx detect`                                 | Detects HytaleServer.jar (and release/prerelease if present) and saves configuration to `.prism.json`.        |
 | `python main.py ctx clean <db\|build\|all>`                 | Clean: `db` (databases only), `build` (decompiled output), `all` (everything).                                |
 | `python main.py ctx reset`                                  | Resets the project to zero (removes DB, build, and `.prism.json`).                                            |
@@ -150,6 +168,12 @@ To expose the server over the network (e.g. in a container):
 The MCP endpoint in HTTP mode is `http://<host>:<port>/mcp`. MCP clients that support Streamable HTTP can connect to that URL.
 
 **Minimal Docker example:** build an image that installs dependencies and runs `python main.py mcp --http`, expose port 8000, and connect your client to `http://<container-ip>:8000/mcp`.
+
+## 📚 See also
+
+- [CLI documentation](src/prism/entrypoints/cli/README.md) — detailed arguments, flows, and subcommands.
+- [AGENTS.md](AGENTS.md) — technical context and architecture for contributors and agents.
+- [CONTRIBUTING.md](CONTRIBUTING.md) — how to contribute to the project.
 
 ## 🤝 Contributing
 
