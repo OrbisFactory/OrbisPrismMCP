@@ -1,4 +1,4 @@
-# 💎 Orbis Prism
+# 💎 Orbis Prism MCP
 
 > "Deconstruct the engine, illuminate the API."
 

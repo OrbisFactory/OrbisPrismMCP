@@ -1,4 +1,4 @@
-# 💎 Orbis Prism
+# 💎 Orbis Prism MCP
 
 **[Leer en español](README.es.md)**
 
