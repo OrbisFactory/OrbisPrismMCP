@@ -22,9 +22,9 @@ Arquitectura por capas (hexagonal):
 |------|-----------|-----|
 | **Domain** | `domain/` | Tipos y constantes: `ServerVersion`, `VALID_SERVER_VERSIONS`, `normalize_version()` en `constants.py`; `types.py` con tipos compartidos. |
 | **Ports** | `ports/` | Interfaces (Protocol): `ConfigProvider` (raíz, DB path, decompiled dir, load/save config) e `IndexRepository` (search, get_class, get_method, list_classes, get_stats). |
-| **Application** | `application/` | Casos de uso: `search_api` en `search.py`; `get_class`, `get_method`, `list_classes`, `get_index_stats`, `get_context_list` en `index_queries.py`; `read_source` en `read_source.py`. Reciben los ports por inyección. |
+| **Application** | `application/` | Casos de uso: `search_api` en `search.py`; `get_class`, `get_method`, `list_classes`, `get_index_stats`, `get_context_list` en `index_queries.py`; `read_source` en `read_source.py`; `get_hierarchy` en `hierarchy.py`; `find_usages` en `usages.py`. Reciben los ports por inyección. |
 | **Infrastructure** | `infrastructure/` | Implementaciones: `config_impl` (paths, .prism.json, env), `db` (schema SQLite + FTS5), `file_config` (ConfigProvider), `sqlite_repository` (IndexRepository), `detection` (JAR/JADX), `decompile` (JADX; `run_decompile_only` sin prune), `prune`, `extractor` (regex sobre Java → DB), `workspace_cleanup` (clean_db, clean_build, reset_workspace). |
-| **Entrypoints** | `entrypoints/` | Paquete `cli/` (comandos: `query`, `mcp`, `context`/`ctx` con **init** —comando inicial—, detect, clean, reset, decompile, prune, db, list, use; `lang`, `config`). No hay comando top-level `init`; el comando inicial es `ctx init`. `mcp_server.py`: herramientas MCP (`prism_search`, etc.). |
+| **Entrypoints** | `entrypoints/` | Paquete `cli/` (comandos: `query`, `mcp`, `context`/`ctx` con **init**, detect, clean, reset, decompile, prune, db, list, use; `lang`, `config`). `mcp_server.py`: herramientas MCP (`prism_search`, `prism_get_class`, `prism_list_classes`, `prism_context_list`, `prism_index_stats`, `prism_read_source`, `prism_get_method`, `prism_get_hierarchy`, `prism_find_usages`, `prism_fts_help`). |
 
 **Fuera de capas:** `i18n.py` (traducciones es/en desde `locales/*.json`).
 

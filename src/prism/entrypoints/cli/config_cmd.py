@@ -1,4 +1,4 @@
-# Comando config set game_path.
+# config set game_path command.
 
 import sys
 from pathlib import Path
@@ -9,7 +9,7 @@ from ...infrastructure import detection
 
 
 def cmd_config_set_jar_path(path_str: str, root: Path | None = None) -> int:
-    """Establece la ruta a HytaleServer.jar o a la carpeta raíz de Hytale."""
+    """Sets the path to HytaleServer.jar or to the Hytale root folder."""
     root = root or config_impl.get_project_root()
     path = Path(path_str).resolve()
     cfg = config_impl.load_config(root)
@@ -50,10 +50,10 @@ def cmd_config_set_jar_path(path_str: str, root: Path | None = None) -> int:
 
 
 def run_config(args: list[str], root: Path) -> int:
-    """Dispatch del comando config_impl (set game_path)."""
+    """Dispatch of the config command (set game_path)."""
     if len(args) >= 4 and args[1].lower() == "set" and args[2].lower() == "game_path":
         return cmd_config_set_jar_path(" ".join(args[3:]), root)
     if len(args) >= 2 and args[1].lower() == "set":
-        print("Uso: prism config_impl set game_path <ruta>", file=sys.stderr)
+        print("Usage: prism config_impl set game_path <path>", file=sys.stderr)
         return 1
-    return 0  # main mostrará ayuda
+    return 0  # main will show help

@@ -11,7 +11,7 @@
   "cli.build.phase_decompile_done": "  Done.",
   "cli.build.phase_index": "Phase 2/2: Indexing...",
   "cli.build.indexing_version": "  Indexing {version}...",
-  "cli.build.indexed": "    {version}: {classes} classes, {methods} methods.",
+  "cli.build.indexed": "    {version}: {classes} classes, {methods} methods, {constants} constants.",
   "cli.build.skipped_no_code": "    {version}: skipped (no decompiled code).",
   "cli.build.decompile_failed": "Decompilation failed.",
   "cli.build.success": "Build completed. Code and DB updated.",
@@ -42,7 +42,7 @@
   "cli.prune.prune_failed": "Prune failed.",
   "cli.help.prune_desc": "Copy only com.hypixel.hytale from decompiled_raw to decompiled. Default: release; --all/-a: all.",
   "cli.index.not_implemented": "Command 'index' not implemented yet. See Phase 2 of the plan.",
-  "cli.index.success": "Indexing completed. {classes} classes, {methods} methods in workspace/db/prism_api_{version}.db.",
+  "cli.index.success": "Indexing completed. {classes} classes, {methods} methods, {constants} constants in workspace/db/prism_api_{version}.db.",
   "cli.index.no_decompiled": "No decompiled code found. Run 'ctx decompile' first.",
   "cli.index.db_error": "Error writing database. Check permissions and disk space.",
   "cli.query.usage": "Usage: python main.py query <term> [release|prerelease]",
@@ -109,6 +109,8 @@
   "mcp.tools.prism_context_list.description": "List indexed server versions (release, prerelease) and the active context. Use to discover what is available before searching.",
   "mcp.tools.prism_index_stats.description": "Return the number of indexed classes and methods for a version. If version is omitted, uses the active context.",
   "mcp.tools.prism_read_source.description": "Read the contents of a decompiled Java source file. file_path is the relative path from the decompiled directory (e.g. from prism_search result). Optional start_line and end_line (1-based) return only that range; response includes total_lines and the requested range.",
-  "mcp.tools.prism_get_method.description": "Get methods of a class that match the given method name (exact match; includes overloads with different params). Returns package, class_name, kind, file_path, and methods list (method, returns, params, is_static, annotation). Use when you need a specific method of a known class.",
-  "mcp.tools.prism_fts_help.description": "Return a short reference for FTS5 search syntax used by prism_search: single word, quoted phrase, AND/OR, prefix, and examples."
+  "mcp.tools.prism_get_method.description": "Gets methods from a class that match the given name (exact match; includes overloads with different params). Returns package, class_name, kind, file_path, and list of methods. Use it when you need a specific method from a known class.",
+  "mcp.tools.prism_get_hierarchy.description": "Gets the hierarchy of a class (parents and interfaces). Helps understand where methods come from without switching files.",
+  "mcp.tools.prism_fts_help.description": "Returns a brief reference for the FTS5 syntax used by prism_search: single word, quoted phrase, AND/OR, prefix, and examples.",
+  "mcp.tools.prism_find_usages.description": "Search for usages of a class in the decompiled source code. Useful to find implementation examples or the impact of changes."
 }

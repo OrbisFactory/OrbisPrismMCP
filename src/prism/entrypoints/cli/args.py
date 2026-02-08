@@ -1,4 +1,4 @@
-# Parsers de argumentos del CLI y constantes de flags.
+# CLI argument parsers and flag constants.
 
 import os
 from pathlib import Path
@@ -18,9 +18,9 @@ ENV_MCP_HOST = "MCP_HOST"
 
 def parse_version_arg(args: list[str], start_index: int) -> tuple[str | None, bool]:
     """
-    Parsea el argumento de versión. Devuelve (version, invalid).
-    version: 'release' | 'prerelease' | None (all). Sin argumento -> por defecto 'release'.
-    invalid: True si el argumento no es válido.
+    Parses the version argument. Returns (version, invalid).
+    version: 'release' | 'prerelease' | None (all). No argument -> default 'release'.
+    invalid: True if the argument is invalid.
     """
     if len(args) <= start_index:
         return ("release", False)
@@ -34,8 +34,8 @@ def parse_version_arg(args: list[str], start_index: int) -> tuple[str | None, bo
 
 def parse_query_args(args: list[str]) -> tuple[str | None, str, int, bool]:
     """
-    Parsea args del comando query (desde args[1]).
-    Devuelve (query_term, version, limit, output_json). query_term es None si no se dio término.
+    Parses arguments from the query command (starting from args[1]).
+    Returns (query_term, version, limit, output_json). query_term is None if no term was provided.
     """
     output_json = False
     limit = 30
@@ -69,16 +69,16 @@ def parse_query_args(args: list[str]) -> tuple[str | None, str, int, bool]:
 
 def parse_mcp_args(args: list[str], start_index: int) -> tuple[str, str, int]:
     """
-    Parsea argumentos del comando mcp (desde args[start_index]).
-    También lee MCP_TRANSPORT, MCP_HOST, MCP_PORT (el CLI sobreescribe env).
-    Devuelve (transport, host, port). transport: "stdio" | "streamable-http".
+    Parses arguments from the mcp command (starting from args[start_index]).
+    Also reads MCP_TRANSPORT, MCP_HOST, MCP_PORT (CLI overrides environment variables).
+    Returns (transport, host, port). transport: "stdio" | "streamable-http".
     """
     transport = "stdio"
     host = "0.0.0.0"
     port = 8000
     env_transport = os.environ.get(ENV_MCP_TRANSPORT, "").strip().lower()
-    if env_transport in ("http", "streamable-http"):
-        transport = "streamable-http"
+    if env_transport in ("http", "streamable-http", "sse"):
+        transport = "sse"
     try:
         port = int(os.environ.get(ENV_MCP_PORT, "8000"))
         port = max(1, min(port, 65535))
@@ -89,7 +89,7 @@ def parse_mcp_args(args: list[str], start_index: int) -> tuple[str, str, int]:
     while i < len(args):
         a = args[i]
         if a in MCP_HTTP_FLAGS:
-            transport = "streamable-http"
+            transport = "sse"
             i += 1
         elif a in MCP_PORT_FLAGS:
             if i + 1 < len(args):

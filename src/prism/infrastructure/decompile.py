@@ -97,8 +97,8 @@ def run_jadx(
 
 def run_decompile_only_for_version(root: Path | None, version: str) -> tuple[bool, str]:
     """
-    Ejecuta solo JADX para una versión (release o prerelease). No ejecuta prune.
-    Escribe en decompiled_raw/<version>. Devuelve (True, "") o (False, "no_jar"|"no_jadx"|"jadx_failed").
+    Executes JADX only for a version (release or prerelease). Does not execute prune.
+    Writes to decompiled_raw/<version>. Returns (True, "") or (False, "no_jar"|"no_jadx"|"jadx_failed").
     """
     root = root or config_impl.get_project_root()
     if version == "release":
@@ -137,8 +137,8 @@ def run_decompile_only(
     versions: list[str] | None = None,
 ) -> tuple[bool, str]:
     """
-    Ejecuta solo JADX (sin prune) para una o más versiones. Si versions es None, usa las que tengan JAR configurado.
-    Devuelve (True, "") en éxito; (False, "no_jar"|"no_jadx"|"jadx_failed") en fallo.
+    Executes JADX only (without prune) for one or more versions. If versions is None, uses those with a configured JAR.
+    Returns (True, "") on success; (False, "no_jar"|"no_jadx"|"jadx_failed") on failure.
     """
     root = root or config_impl.get_project_root()
     if versions is None:

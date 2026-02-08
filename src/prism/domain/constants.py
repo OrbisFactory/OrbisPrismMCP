@@ -1,11 +1,11 @@
-# Constantes de dominio compartidas (versiones de servidor).
+# Shared domain constants (server versions).
 
 VALID_SERVER_VERSIONS = ("release", "prerelease")
 
 
 def normalize_version(version: str | None) -> str:
     """
-    Devuelve 'release' o 'prerelease'. Si version es None o no válida, devuelve 'release'.
+    Returns 'release' or 'prerelease'. If version is None or invalid, returns 'release'.
     """
     if not version or not str(version).strip():
         return "release"
