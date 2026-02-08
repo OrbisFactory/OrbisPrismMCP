@@ -6,8 +6,8 @@ from pathlib import Path
 
 
 def get_connection(db_path: Path) -> sqlite3.Connection:
-    """Uso interno: abre conexión a la base de datos; crea archivo y directorio si no existen.
-    Preferir db.connection(db_path) como context manager para cerrar correctamente."""
+    """Internal use: opens connection to the database; creates file and directory if they don't exist.
+    Prefer db.connection(db_path) as a context manager for proper closing."""
     db_path.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(str(db_path), check_same_thread=False)
     conn.row_factory = sqlite3.Row
@@ -17,8 +17,8 @@ def get_connection(db_path: Path) -> sqlite3.Connection:
 @contextmanager
 def connection(db_path: Path):
     """
-    Context manager: abre conexión y la cierra al salir (incluido en excepciones).
-    Uso: with db.connection(db_path) as conn: ...
+    Context manager: opens connection and closes it on exit (including on exceptions).
+    Usage: with db.connection(db_path) as conn: ...
     """
     conn = get_connection(db_path)
     try:
@@ -29,21 +29,28 @@ def connection(db_path: Path):
 
 def init_schema(conn: sqlite3.Connection) -> None:
     """
-    Crea tablas normales (classes, methods) y la tabla virtual FTS5 para búsqueda.
-    Idempotente: elimina y recrea tablas si existen.
+    Creates normal tables (classes, methods) and the FTS5 virtual table for searching.
+    Drops and recreates tables to ensure schema synchronization.
     """
+    conn.execute("DROP TABLE IF EXISTS api_fts")
+    conn.execute("DROP TABLE IF EXISTS methods")
+    conn.execute("DROP TABLE IF EXISTS constants")
+    conn.execute("DROP TABLE IF EXISTS classes")
+    
     conn.execute("""
-        CREATE TABLE IF NOT EXISTS classes (
+        CREATE TABLE classes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             package TEXT NOT NULL,
             class_name TEXT NOT NULL,
             kind TEXT NOT NULL,
             file_path TEXT NOT NULL,
+            parent TEXT,
+            interfaces TEXT,
             UNIQUE(package, class_name)
         )
     """)
     conn.execute("""
-        CREATE TABLE IF NOT EXISTS methods (
+        CREATE TABLE methods (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             class_id INTEGER NOT NULL,
             method TEXT NOT NULL,
@@ -54,10 +61,20 @@ def init_schema(conn: sqlite3.Connection) -> None:
             FOREIGN KEY (class_id) REFERENCES classes(id)
         )
     """)
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_methods_class_id ON methods(class_id)")
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_classes_package ON classes(package)")
+    conn.execute("""
+        CREATE TABLE constants (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            class_id INTEGER NOT NULL,
+            name TEXT NOT NULL,
+            type TEXT NOT NULL,
+            value TEXT NOT NULL,
+            FOREIGN KEY (class_id) REFERENCES classes(id)
+        )
+    """)
+    conn.execute("CREATE INDEX idx_methods_class_id ON methods(class_id)")
+    conn.execute("CREATE INDEX idx_constants_class_id ON constants(class_id)")
+    conn.execute("CREATE INDEX idx_classes_package ON classes(package)")
 
-    conn.execute("DROP TABLE IF EXISTS api_fts")
     conn.execute("""
         CREATE VIRTUAL TABLE api_fts USING fts5(
             package,
@@ -66,6 +83,8 @@ def init_schema(conn: sqlite3.Connection) -> None:
             method_name,
             returns,
             params,
+            const_name,
+            const_value,
             tokenize='unicode61'
         )
     """)
@@ -73,26 +92,49 @@ def init_schema(conn: sqlite3.Connection) -> None:
 
 
 def clear_tables(conn: sqlite3.Connection) -> None:
-    """Vacía tablas de datos (classes, methods, api_fts) para reindexar desde cero."""
+    """Empties data tables (classes, methods, constants, api_fts) to reindex from scratch."""
     conn.execute("DELETE FROM api_fts")
     conn.execute("DELETE FROM methods")
+    conn.execute("DELETE FROM constants")
     conn.execute("DELETE FROM classes")
     conn.commit()
 
 
-def insert_class(conn: sqlite3.Connection, package: str, class_name: str, kind: str, file_path: str) -> int:
-    """Inserta una clase y devuelve su id. Si (package, class_name) existe, devuelve el id existente."""
+def insert_class(conn: sqlite3.Connection, package: str, class_name: str, kind: str, file_path: str, parent: str | None = None, interfaces: str | None = None) -> int:
+    """Inserts a class and returns its id. If (package, class_name) exists, returns the existing id."""
     cur = conn.execute(
-        "INSERT OR IGNORE INTO classes (package, class_name, kind, file_path) VALUES (?, ?, ?, ?)",
-        (package, class_name, kind, file_path),
+        "INSERT OR IGNORE INTO classes (package, class_name, kind, file_path, parent, interfaces) VALUES (?, ?, ?, ?, ?, ?)",
+        (package, class_name, kind, file_path, parent, interfaces),
     )
     if cur.lastrowid and cur.lastrowid > 0:
         return cur.lastrowid
+
+    # If already exists, we might need to update parent/interfaces if they were NULL before
+    # (e.g. if we indexed a reference before the actual definition)
+    conn.execute(
+        "UPDATE classes SET parent = ?, interfaces = ?, kind = ?, file_path = ? WHERE package = ? AND class_name = ?",
+        (parent, interfaces, kind, file_path, package, class_name)
+    )
+    
     row = conn.execute(
         "SELECT id FROM classes WHERE package = ? AND class_name = ?",
         (package, class_name),
     ).fetchone()
     return row["id"] if row else 0
+
+
+def insert_constant(
+    conn: sqlite3.Connection,
+    class_id: int,
+    name: str,
+    type_name: str,
+    value: str,
+) -> None:
+    """Inserts a constant."""
+    conn.execute(
+        "INSERT INTO constants (class_id, name, type, value) VALUES (?, ?, ?, ?)",
+        (class_id, name, type_name, value),
+    )
 
 
 def insert_method(
@@ -104,7 +146,7 @@ def insert_method(
     is_static: bool,
     annotation: str | None,
 ) -> None:
-    """Inserta un método y su fila en api_fts para búsqueda."""
+    """Inserts a method."""
     conn.execute(
         "INSERT INTO methods (class_id, method, returns, params, is_static, annotation) VALUES (?, ?, ?, ?, ?, ?)",
         (class_id, method, returns, params, 1 if is_static else 0, annotation),
@@ -116,22 +158,25 @@ def insert_fts_row(
     package: str,
     class_name: str,
     kind: str,
-    method_name: str,
-    returns: str,
-    params: str,
+    method_name: str | None = None,
+    returns: str | None = None,
+    params: str | None = None,
+    const_name: str | None = None,
+    const_value: str | None = None,
 ) -> None:
-    """Inserta una fila en la tabla FTS5 para que sea buscable."""
+    """Inserts a row into the FTS5 table to make it searchable."""
     conn.execute(
-        "INSERT INTO api_fts (package, class_name, kind, method_name, returns, params) VALUES (?, ?, ?, ?, ?, ?)",
-        (package, class_name, kind, method_name, returns, params),
+        "INSERT INTO api_fts (package, class_name, kind, method_name, returns, params, const_name, const_value) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        (package, class_name, kind, method_name, returns, params, const_name, const_value),
     )
 
 
-def get_stats(conn: sqlite3.Connection) -> tuple[int, int]:
-    """Devuelve (número de clases, número de métodos)."""
+def get_stats(conn: sqlite3.Connection) -> tuple[int, int, int]:
+    """Returns (number of classes, number of methods, number of constants)."""
     classes = conn.execute("SELECT COUNT(*) AS n FROM classes").fetchone()["n"]
     methods = conn.execute("SELECT COUNT(*) AS n FROM methods").fetchone()["n"]
-    return classes, methods
+    constants = conn.execute("SELECT COUNT(*) AS n FROM constants").fetchone()["n"]
+    return classes, methods, constants
 
 
 def get_class_and_methods(
@@ -139,9 +184,9 @@ def get_class_and_methods(
     package: str,
     class_name: str,
 ) -> dict | None:
-    """Devuelve la clase y todos sus métodos. None si no existe."""
+    """Returns the class and all its methods. None if not found."""
     row = conn.execute(
-        "SELECT id, package, class_name, kind, file_path FROM classes WHERE package = ? AND class_name = ?",
+        "SELECT id, package, class_name, kind, file_path, parent, interfaces FROM classes WHERE package = ? AND class_name = ?",
         (package.strip(), class_name.strip()),
     ).fetchone()
     if row is None:
@@ -161,12 +206,23 @@ def get_class_and_methods(
         }
         for m in methods_rows
     ]
+    const_rows = conn.execute(
+        "SELECT name, type, value FROM constants WHERE class_id = ? ORDER BY name",
+        (class_id,),
+    ).fetchall()
+    constants = [
+        {"name": c["name"], "type": c["type"], "value": c["value"]}
+        for c in const_rows
+    ]
     return {
         "package": row["package"],
         "class_name": row["class_name"],
         "kind": row["kind"],
         "file_path": row["file_path"],
+        "parent": row["parent"],
+        "interfaces": row["interfaces"],
         "methods": methods,
+        "constants": constants,
     }
 
 
@@ -176,7 +232,7 @@ def get_method(
     class_name: str,
     method_name: str,
 ) -> dict | None:
-    """Devuelve la clase y los métodos que coinciden con method_name. None si la clase no existe."""
+    """Returns the class and methods that match method_name. None if the class doesn't exist."""
     row = conn.execute(
         "SELECT id, package, class_name, kind, file_path FROM classes WHERE package = ? AND class_name = ?",
         (package.strip(), class_name.strip()),
@@ -214,7 +270,7 @@ def list_classes(
     limit: int = 100,
     offset: int = 0,
 ) -> list[dict]:
-    """Lista clases por package exacto o prefijo. limit/offset para paginación."""
+    """Lists classes by exact package or prefix. limit/offset for pagination."""
     p = package_prefix.strip()
     if not p:
         return []
@@ -250,13 +306,13 @@ def search_fts(
     kind: str | None = None,
     unique_classes: bool = False,
 ) -> list[sqlite3.Row] | list[dict]:
-    """Busca en la tabla FTS5 api_fts. unique_classes: una entrada por clase con method_count."""
+    """Searches in the FTS5 table api_fts. unique_classes: one entry per class with method_count."""
     if not query_term or not query_term.strip():
         return []
     term = query_term.strip()
     fetch_limit = limit * 20 if unique_classes else limit
     sql = """SELECT api_fts.package, api_fts.class_name, api_fts.kind, api_fts.method_name,
-             api_fts.returns, api_fts.params, c.file_path
+             api_fts.returns, api_fts.params, api_fts.const_name, api_fts.const_value, c.file_path
              FROM api_fts JOIN classes c ON c.package = api_fts.package AND c.class_name = api_fts.class_name
              WHERE api_fts MATCH ?"""
     params: list = [term]

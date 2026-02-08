@@ -1,4 +1,4 @@
-# Comandos lang: list y set.
+# lang commands: list and set.
 
 import sys
 from pathlib import Path
@@ -8,7 +8,7 @@ from ...infrastructure import config_impl
 
 
 def cmd_lang_list(root: Path | None = None) -> int:
-    """Lista idiomas disponibles y marca el actual."""
+    """Lists available languages and marks the current one."""
     root = root or config_impl.get_project_root()
     current = i18n.get_current_locale(root)
     locales = i18n.get_available_locales()
@@ -22,7 +22,7 @@ def cmd_lang_list(root: Path | None = None) -> int:
 
 
 def cmd_lang_set(lang_code: str, root: Path | None = None) -> int:
-    """Cambia el idioma guardado en .prism.json."""
+    """Changes the language saved in .prism.json."""
     root = root or config_impl.get_project_root()
     code = lang_code.strip().lower()
     if not code:
@@ -39,9 +39,9 @@ def cmd_lang_set(lang_code: str, root: Path | None = None) -> int:
 
 
 def run_lang(args: list[str], root: Path) -> int:
-    """Dispatch del comando lang (list | set)."""
+    """Dispatch of the lang command (list | set)."""
     if len(args) < 2:
-        return 0  # main mostrará ayuda
+        return 0  # main will show help
     sub = args[1].lower()
     if sub == "list":
         return cmd_lang_list(root)

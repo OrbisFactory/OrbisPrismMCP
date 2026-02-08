@@ -1,4 +1,4 @@
-# Ayuda del CLI.
+# CLI Help.
 
 from ... import i18n
 

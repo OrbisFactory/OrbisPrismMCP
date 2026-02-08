@@ -17,34 +17,45 @@ PRUNE_SOURCE_CANDIDATES = (
 
 def prune_to_core(raw_dir: Path, dest_dir: Path) -> tuple[bool, dict | None]:
     """
-    Copy only the com/hypixel/hytale branch from raw_dir to dest_dir.
-    Tries raw_dir/sources/com/hypixel/hytale and raw_dir/com/hypixel/hytale.
+    Copy only the core packages from raw_dir to dest_dir.
+    Packages are defined in config_impl.CORE_PACKAGE_PATHS.
     Returns (True, {"files": N, "source_subdir": "sources"|"."}) or (False, None) if not found.
     """
-    core_rel = config_impl.CORE_PACKAGE_PATH  # "com/hypixel/hytale"
-    source_core = None
-    source_subdir = None
-    for sub in PRUNE_SOURCE_CANDIDATES:
-        candidate = (raw_dir / sub / core_rel) if sub else (raw_dir / core_rel)
-        if candidate.is_dir():
-            source_core = candidate
-            source_subdir = sub or "."
-            break
-    if source_core is None:
-        return (False, None)
-    target = dest_dir / core_rel
     if dest_dir.exists():
         shutil.rmtree(dest_dir)
     dest_dir.mkdir(parents=True, exist_ok=True)
-    all_files = [p for p in source_core.rglob("*") if p.is_file()]
-    for src in tqdm(all_files, unit=" files", desc="Pruning", file=sys.stderr, colour="blue"):
-        rel = src.relative_to(source_core)
-        tgt = target / rel
-        tgt.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(src, tgt)
-    # Count only .java files for the log
-    file_count = sum(1 for _ in source_core.rglob("*.java"))
-    return (True, {"files": file_count, "source_subdir": source_subdir})
+
+    found_any = False
+    total_files = 0
+    detected_subdir = "."
+
+    for core_rel in config_impl.CORE_PACKAGE_PATHS:
+        source_core = None
+        source_subdir = None
+        for sub in PRUNE_SOURCE_CANDIDATES:
+            candidate = (raw_dir / sub / core_rel) if sub else (raw_dir / core_rel)
+            if candidate.is_dir():
+                source_core = candidate
+                source_subdir = sub or "."
+                break
+        
+        if source_core:
+            found_any = True
+            detected_subdir = source_subdir
+            target = dest_dir / core_rel
+            all_files = [p for p in source_core.rglob("*") if p.is_file()]
+            for src in tqdm(all_files, unit=" files", desc=f"Pruning {core_rel}", file=sys.stderr, colour="blue"):
+                rel = src.relative_to(source_core)
+                tgt = target / rel
+                tgt.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(src, tgt)
+            
+            total_files += sum(1 for _ in source_core.rglob("*.java"))
+
+    if not found_any:
+        return (False, None)
+
+    return (True, {"files": total_files, "source_subdir": detected_subdir})
 
 
 def run_prune_only_for_version(root: Path | None, version: str) -> tuple[bool, str]:

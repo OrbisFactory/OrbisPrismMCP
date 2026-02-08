@@ -1,4 +1,4 @@
-# Limpieza del workspace: borrar DB, artefactos de build y reset completo.
+# Workspace cleanup: delete DB, build artifacts, and complete reset.
 
 import shutil
 from pathlib import Path
@@ -9,8 +9,8 @@ from . import config_impl
 
 def clean_db(root: Path | None = None) -> None:
     """
-    Borra las bases SQLite del workspace (prism_api_release.db y prism_api_prerelease.db).
-    No elimina otros archivos del directorio db.
+    Deletes the SQLite databases from the workspace (prism_api_release.db and prism_api_prerelease.db).
+    Does not delete other files from the db directory.
     """
     root = root or config_impl.get_project_root()
     db_dir = config_impl.get_db_dir(root)
@@ -24,8 +24,8 @@ def clean_db(root: Path | None = None) -> None:
 
 def clean_build(root: Path | None = None) -> None:
     """
-    Borra los directorios de artefactos de build: decompiled_raw/<version> y decompiled/<version>
-    para release y prerelease. Solo elimina si existen.
+    Deletes build artifact directories: decompiled_raw/<version> and decompiled/<version>
+    for release and prerelease. Only deletes them if they exist.
     """
     root = root or config_impl.get_project_root()
     for version in VALID_SERVER_VERSIONS:
@@ -39,8 +39,8 @@ def clean_build(root: Path | None = None) -> None:
 
 def reset_workspace(root: Path | None = None) -> None:
     """
-    Deja el proyecto a cero: ejecuta clean_db y clean_build, y elimina .prism.json
-    para que el usuario pueda volver a ejecutar context detect e init desde el principio.
+    Resets the project to zero: runs clean_db and clean_build, and removes .prism.json
+    so the user can run context detect and init again from the beginning.
     """
     root = root or config_impl.get_project_root()
     clean_db(root)

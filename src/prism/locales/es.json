@@ -11,7 +11,7 @@
   "cli.build.phase_decompile_done": "  Listo.",
   "cli.build.phase_index": "Fase 2/2: Indexando...",
   "cli.build.indexing_version": "  Indexando {version}...",
-  "cli.build.indexed": "    {version}: {classes} clases, {methods} métodos.",
+  "cli.build.indexed": "    {version}: {classes} clases, {methods} métodos, {constants} constantes.",
   "cli.build.skipped_no_code": "    {version}: omitido (sin código descompilado).",
   "cli.build.decompile_failed": "Falló la descompilación.",
   "cli.build.success": "Build completado. Código y DB actualizados.",
@@ -42,7 +42,7 @@
   "cli.prune.prune_failed": "Poda falló.",
   "cli.help.prune_desc": "Copia solo com.hypixel.hytale de decompiled_raw a decompiled. Por defecto: release; --all/-a: todas.",
   "cli.index.not_implemented": "Comando 'index' no implementado aún. Ver Fase 2 del plan.",
-  "cli.index.success": "Indexación completada. {classes} clases, {methods} métodos en workspace/db/prism_api_{version}.db.",
+  "cli.index.success": "Indexación completada. {classes} clases, {methods} métodos, {constants} constantes en workspace/db/prism_api_{version}.db.",
   "cli.index.no_decompiled": "No hay código descompilado. Ejecuta 'ctx decompile' antes.",
   "cli.index.db_error": "Error al escribir la base de datos. Revisa permisos y espacio.",
   "cli.query.usage": "Uso: python main.py query <término> [release|prerelease]",
@@ -110,5 +110,7 @@
   "mcp.tools.prism_index_stats.description": "Devuelve el número de clases y métodos indexados para una versión. Si se omite version, usa el contexto activo.",
   "mcp.tools.prism_read_source.description": "Lee el contenido de un archivo Java descompilado. file_path es la ruta relativa al directorio descompilado (ej. resultado de prism_search). start_line y end_line opcionales (1-based) devuelven solo ese rango; la respuesta incluye total_lines y el rango solicitado.",
   "mcp.tools.prism_get_method.description": "Obtiene los métodos de una clase que coinciden con el nombre dado (coincidencia exacta; incluye sobrecargas con distintos params). Devuelve package, class_name, kind, file_path y lista de methods. Úsalo cuando necesites un método concreto de una clase conocida.",
-  "mcp.tools.prism_fts_help.description": "Devuelve una referencia breve de la sintaxis FTS5 usada por prism_search: palabra, frase entre comillas, AND/OR, prefijo y ejemplos."
+  "mcp.tools.prism_get_hierarchy.description": "Obtiene la jerarquía de una clase (padres e interfaces). Ayuda a entender de dónde vienen los métodos sin cambiar de archivo.",
+  "mcp.tools.prism_fts_help.description": "Devuelve una referencia breve de la sintaxis FTS5 usada por prism_search: palabra, frase entre comillas, AND/OR, prefijo y ejemplos.",
+  "mcp.tools.prism_find_usages.description": "Busca usos de una clase en el código fuente descompilado. Útil para encontrar ejemplos de implementación o impacto de cambios."
 }

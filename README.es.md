@@ -35,7 +35,8 @@
 
 - **Auto-Detection:** Localiza la instalación oficial en Windows (`%APPDATA%\Hytale\install\...\Server`). Puedes sobrescribir la ruta con `python main.py config_impl set game_path <ruta>`.
 - **Prism Pipeline:** Descompilación quirúrgica usando JADX, eliminando librerías de terceros y centrándose exclusivamente en `com.hypixel.hytale`.
-- **Deep Indexing:** Genera una base de datos SQLite con búsqueda de texto completo (FTS5) sobre más de 200k firmas de métodos y clases.
+- **Deep Indexing:** Generas una base de datos SQLite con búsqueda de texto completo (FTS5) sobre firmas de métodos, nombres de clases y **constantes** (campos `public static final`).
+- **Análisis Avanzado:** Herramientas para extraer la **jerarquía** de clases (padres e interfaces) y buscar **usos** directos en el código fuente descompilado.
 - **AI-Ready (MCP):** Servidor integrado de Model Context Protocol para que agentes como Claude o Cursor naveguen por la API sin alucinaciones.
 - **Multi-language:** El CLI y los mensajes al usuario están disponibles en **español** e **inglés**. Puedes cambiar el idioma en cualquier momento (ver más abajo).
 
