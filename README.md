@@ -58,7 +58,7 @@ After running `lang set <code>`, subsequent CLI messages will use that language.
 - **Official Hytale installation** (launcher and game). Orbis Prism does not distribute any game code or binaries; it works on top of your installation.
 - **Python 3.11+**
 - **Java 25** (for compatibility with the Hytale server)
-- **JADX** (included in `/bin` or available on PATH)
+- **JADX** https://github.com/skylot/jadx (included in `/bin` or available on PATH) 
 
 ### Initial command (first time)
 
