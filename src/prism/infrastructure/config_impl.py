@@ -1,4 +1,4 @@
-# Configuración central: paths por defecto, constantes y variables de entorno.
+# Central configuration: default paths, constants, and environment variables.
 
 import json
 import os
@@ -37,7 +37,7 @@ CONFIG_KEY_ACTIVE_SERVER = "active_server"
 
 
 def get_project_root() -> Path:
-    """Raíz del proyecto: carpeta que contiene main.py / .prism.json."""
+    """Project root: folder containing main.py / .prism.json."""
     env_root = os.environ.get(ENV_WORKSPACE)
     if env_root:
         p = Path(env_root).resolve()
@@ -52,7 +52,7 @@ def get_project_root() -> Path:
 
 
 def get_workspace_dir(root: Path | None = None) -> Path:
-    """Directorio workspace (decompiled, db, server)."""
+    """Workspace directory (decompiled, db, server)."""
     root = root or get_project_root()
     env_dir = os.environ.get(ENV_OUTPUT_DIR)
     if env_dir and Path(env_dir).is_dir():
@@ -61,13 +61,13 @@ def get_workspace_dir(root: Path | None = None) -> Path:
 
 
 def get_config_path(root: Path | None = None) -> Path:
-    """Ruta al archivo de configuración persistente."""
+    """Path to the persistent configuration file."""
     root = root or get_project_root()
     return root / CONFIG_FILENAME
 
 
 def load_config(root: Path | None = None) -> dict:
-    """Carga config desde .prism.json. Devuelve dict vacío si no existe."""
+    """Load config from .prism.json. Returns empty dict if not found."""
     path = get_config_path(root)
     if not path.exists():
         return {}
@@ -79,14 +79,14 @@ def load_config(root: Path | None = None) -> dict:
 
 
 def save_config(config: dict, root: Path | None = None) -> None:
-    """Guarda config en .prism.json."""
+    """Save config to .prism.json."""
     path = get_config_path(root)
     with open(path, "w", encoding="utf-8") as f:
         json.dump(config, f, indent=2, ensure_ascii=False)
 
 
 def get_jar_path_from_config(root: Path | None = None) -> Path | None:
-    """Obtiene ruta JAR desde config. None si no está definida."""
+    """Gets JAR path from config. None if not defined."""
     cfg = load_config(root)
     raw = cfg.get(CONFIG_KEY_JAR_PATH)
     if not raw:
@@ -96,7 +96,7 @@ def get_jar_path_from_config(root: Path | None = None) -> Path | None:
 
 
 def get_jar_path_release_from_config(root: Path | None = None) -> Path | None:
-    """JAR de versión release. Infiere desde jar_path o sibling si hace falta."""
+    """Release version JAR. Infers from jar_path or sibling if needed."""
     root = root or get_project_root()
     cfg = load_config(root)
     raw = cfg.get(CONFIG_KEY_JAR_PATH_RELEASE)
@@ -117,7 +117,7 @@ def get_jar_path_release_from_config(root: Path | None = None) -> Path | None:
 
 
 def get_jar_path_prerelease_from_config(root: Path | None = None) -> Path | None:
-    """JAR de versión prerelease. Infiere desde jar_path o sibling si hace falta."""
+    """Prerelease version JAR. Infers from jar_path or sibling if needed."""
     root = root or get_project_root()
     cfg = load_config(root)
     raw = cfg.get(CONFIG_KEY_JAR_PATH_PRERELEASE)
@@ -138,7 +138,7 @@ def get_jar_path_prerelease_from_config(root: Path | None = None) -> Path | None
 
 
 def get_jadx_path_from_config(root: Path | None = None) -> Path | None:
-    """Ruta a JADX desde config. None si no está o no es ejecutable."""
+    """JADX path from config. None if missing or not executable."""
     cfg = load_config(root)
     raw = cfg.get(CONFIG_KEY_JADX_PATH)
     if not raw:
@@ -148,17 +148,17 @@ def get_jadx_path_from_config(root: Path | None = None) -> Path | None:
 
 
 def get_decompiled_dir(root: Path | None = None, version: str = "release") -> Path:
-    """Directorio de código descompilado para una versión."""
+    """Decompiled code directory for a version."""
     return get_workspace_dir(root) / "decompiled" / version
 
 
 def get_decompiled_raw_dir(root: Path | None = None, version: str = "release") -> Path:
-    """Directorio raw de JADX para una versión (antes del prune)."""
+    """Raw JADX directory for a version (before pruning)."""
     return get_workspace_dir(root) / "decompiled_raw" / version
 
 
 def get_db_dir(root: Path | None = None) -> Path:
-    """Directorio de bases SQLite. Si PRISM_DB_DIR está definido, se usa ese."""
+    """SQLite bases directory. Uses PRISM_DB_DIR if defined."""
     env_dir = os.environ.get(ENV_DB_DIR)
     if env_dir and env_dir.strip():
         return Path(env_dir.strip()).resolve()
@@ -166,7 +166,7 @@ def get_db_dir(root: Path | None = None) -> Path:
 
 
 def get_db_path(root: Path | None = None, version: str | None = None) -> Path:
-    """Ruta a la DB. Si version es None, usa active_server de config (por defecto 'release')."""
+    """Path to the DB. If version is None, uses active_server from config (default 'release')."""
     root = root or get_project_root()
     if version is None:
         cfg = load_config(root)
@@ -190,6 +190,6 @@ def get_db_path(root: Path | None = None, version: str | None = None) -> Path:
 
 
 def get_logs_dir(root: Path | None = None) -> Path:
-    """Directorio de logs."""
+    """Logs directory."""
     base = root if root is not None else get_project_root()
     return base / "logs"

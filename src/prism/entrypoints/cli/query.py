@@ -1,4 +1,4 @@
-# Comando query: búsqueda FTS5 en la DB.
+# query command: FTS5 search in the DB.
 
 import json
 import sys
@@ -19,7 +19,7 @@ def cmd_query(
     limit: int = 30,
     output_json: bool = False,
 ) -> int:
-    """Ejecuta búsqueda FTS5 en la DB para la versión dada. output_json: solo imprime JSON."""
+    """Executes FTS5 search in the DB for the given version. output_json: only prints JSON."""
     root = root or config_impl.get_project_root()
     if not query_term or not query_term.strip():
         print(i18n.t("cli.query.usage"), file=sys.stderr)
@@ -44,7 +44,7 @@ def cmd_query(
 
 
 def run_query(args: list[str], root: Path) -> int:
-    """Dispatch del comando query."""
+    """Dispatch of the query command."""
     query_term, version, limit, output_json = cli_args.parse_query_args(args)
     if not query_term:
         print(i18n.t("cli.query.usage"), file=sys.stderr)

@@ -1,4 +1,4 @@
-# Comandos context / ctx: detect, init, clean, reset, decompile, prune, db, list, use.
+# context / ctx commands: detect, init, clean, reset, decompile, prune, db, list, use.
 
 import os
 import sys
@@ -20,7 +20,7 @@ from . import out
 
 
 def _ensure_dirs(root: Path) -> None:
-    """Asegura que existan workspace/server, decompiled, db y logs."""
+    """Ensures that workspace/server, decompiled, db and logs directories exist."""
     config_impl.get_workspace_dir(root).mkdir(parents=True, exist_ok=True)
     (config_impl.get_workspace_dir(root) / "server").mkdir(parents=True, exist_ok=True)
     config_impl.get_decompiled_dir(root).mkdir(parents=True, exist_ok=True)
@@ -30,8 +30,8 @@ def _ensure_dirs(root: Path) -> None:
 
 def cmd_init(root: Path | None = None) -> int:
     """
-    Detecta HytaleServer.jar, valida y guarda config en .prism.json.
-    Crea los directorios del workspace si no existen.
+    Detects HytaleServer.jar, validates and saves config to .prism.json.
+    Creates workspace directories if they don't exist.
     """
     root = root or config_impl.get_project_root()
     _ensure_dirs(root)
@@ -72,12 +72,12 @@ def cmd_init(root: Path | None = None) -> int:
 
 
 def cmd_context_detect(root: Path | None = None) -> int:
-    """Detecta JAR y guarda config (misma lógica que init top-level)."""
+    """Detects JAR and saves config (same logic as top-level init)."""
     return cmd_init(root)
 
 
 def _resolve_context_versions(root: Path, version: str | None) -> list[str] | None:
-    """Determina la lista de versiones a usar; None si no hay JAR configurado."""
+    """Determines the list of versions to use; None if no JAR is configured."""
     if version is not None:
         return [version]
     versions = []
@@ -91,7 +91,7 @@ def _resolve_context_versions(root: Path, version: str | None) -> list[str] | No
 
 
 def cmd_context_init(root: Path | None = None, version: str | None = None) -> int:
-    """Pipeline completo: detect (siempre al inicio) → decompile (solo JADX) → prune → db. version=None -> all."""
+    """Full pipeline: detect (always at start) → decompile (JADX only) → prune → db. version=None -> all."""
     root = root or config_impl.get_project_root()
     # Always run detect first (same as ctx detect) to ensure JAR and config are up to date.
     if cmd_init(root) != 0:
@@ -132,7 +132,7 @@ def cmd_context_init(root: Path | None = None, version: str | None = None) -> in
 
 
 def cmd_context_clean(root: Path | None = None, target: str = "") -> int:
-    """Limpia según target: db | build | b | all."""
+    """Cleans based on target: db | build | b | all."""
     root = root or config_impl.get_project_root()
     t = (target or "").strip().lower()
     if t == "db":
@@ -153,7 +153,7 @@ def cmd_context_clean(root: Path | None = None, target: str = "") -> int:
 
 
 def cmd_context_reset(root: Path | None = None) -> int:
-    """Deja el proyecto a cero: clean db + build y elimina .prism.json."""
+    """Resets the project to zero: clean db + build and removes .prism.json."""
     root = root or config_impl.get_project_root()
     workspace_cleanup.reset_workspace(root)
     out.success(i18n.t("cli.context.reset.done"))
@@ -161,7 +161,7 @@ def cmd_context_reset(root: Path | None = None) -> int:
 
 
 def cmd_context_decompile(root: Path | None = None, version: str | None = None) -> int:
-    """Solo JADX → decompiled_raw (sin prune). version=None -> all."""
+    """Only JADX → decompiled_raw (without prune). version=None -> all."""
     root = root or config_impl.get_project_root()
     versions = None if version is None else [version]
     print(i18n.t("cli.decompile.may_take"))
@@ -174,7 +174,7 @@ def cmd_context_decompile(root: Path | None = None, version: str | None = None) 
 
 
 def cmd_prune(root: Path | None = None, version: str | None = None) -> int:
-    """Solo prune (raw → decompiled). version=None -> todas las que tengan raw."""
+    """Only prune (raw → decompiled). version=None -> all that have raw."""
     root = root or config_impl.get_project_root()
     versions = None if version is None else [version]
     success, err = prune.run_prune_only(root, versions=versions)
@@ -189,7 +189,7 @@ def cmd_prune(root: Path | None = None, version: str | None = None) -> int:
 
 
 def cmd_index(root: Path | None = None, version: str | None = None) -> int:
-    """Indexa en la DB. version=None -> release y prerelease."""
+    """Indexes into the DB. version=None -> release and prerelease."""
     root = root or config_impl.get_project_root()
     if version is not None and version not in VALID_SERVER_VERSIONS:
         out.error(i18n.t("cli.context.use.invalid"))
@@ -214,7 +214,7 @@ def cmd_index(root: Path | None = None, version: str | None = None) -> int:
 
 
 def cmd_context_list(root: Path | None = None) -> int:
-    """Lista versiones indexadas y cuál está activa."""
+    """Lists indexed versions and shows which one is active."""
     root = root or config_impl.get_project_root()
     provider = file_config.FileConfigProvider()
     ctx = get_context_list(provider, root)
@@ -232,7 +232,7 @@ def cmd_context_list(root: Path | None = None) -> int:
 
 
 def cmd_context_use(version_str: str, root: Path | None = None) -> int:
-    """Establece la versión activa (release o prerelease)."""
+    """Sets the active version (release or prerelease)."""
     root = root or config_impl.get_project_root()
     version = version_str.strip().lower()
     if version not in VALID_SERVER_VERSIONS:
@@ -248,9 +248,9 @@ def cmd_context_use(version_str: str, root: Path | None = None) -> int:
 
 
 def run_context(args: list[str], root: Path) -> int:
-    """Dispatch del comando context | ctx."""
+    """Dispatch for the context | ctx command."""
     if len(args) < 2:
-        return 0  # main mostrará ayuda
+        return 0  # main will show help
     sub = args[1].lower()
     if sub in ("detect", "detec"):
         return cmd_context_detect(root)
@@ -287,7 +287,7 @@ def run_context(args: list[str], root: Path) -> int:
         return cmd_context_list(root)
     if sub == "use":
         if len(args) < 3:
-            out.error("Uso: prism context use <release|prerelease>")
+            out.error("Usage: prism context use <release|prerelease>")
             return 1
         return cmd_context_use(args[2], root)
     out.error(i18n.t("cli.unknown_command", cmd=f"context {sub}"))
