@@ -14,6 +14,7 @@ from ..application import (
     read_source as app_read_source,
     search_api as app_search_api,
     get_hierarchy as app_get_hierarchy,
+    find_usages as app_find_usages,
 )
 from ..domain.constants import normalize_version
 from ..infrastructure.file_config import FileConfigProvider
@@ -177,8 +178,25 @@ def _run_get_hierarchy(
     if not p or not c:
         return json.dumps({"error": "missing_params", "message": "Provide package and class_name, or fqcn."}, ensure_ascii=False)
     
-    data = app_get_hierarchy(_config_provider, version, p, c)
+    data = app_get_hierarchy(_config_provider, version, p, c, None)
     return json.dumps({"version": version, **data}, ensure_ascii=False)
+
+
+def _run_find_usages(
+    version: str,
+    target_class: str,
+    limit: int = 100,
+) -> str:
+    version = normalize_version(version)
+    results, err = app_find_usages(_config_provider, None, version, target_class, limit=limit)
+    if err is not None:
+        return json.dumps(err, ensure_ascii=False)
+    return json.dumps({
+        "version": version,
+        "target_class": target_class,
+        "count": len(results),
+        "usages": results,
+    }, ensure_ascii=False)
 
 
 def _register_tools(app: FastMCP) -> None:
@@ -268,6 +286,16 @@ def _register_tools(app: FastMCP) -> None:
 
     prism_get_hierarchy.__doc__ = i18n.t("mcp.tools.prism_get_hierarchy.description")
     app.tool()(prism_get_hierarchy)
+
+    def prism_find_usages(
+        version: str,
+        target_class: str,
+        limit: int = 100,
+    ) -> str:
+        return _run_find_usages(version, target_class, limit=limit)
+
+    prism_find_usages.__doc__ = i18n.t("mcp.tools.prism_find_usages.description")
+    app.tool()(prism_find_usages)
 
 
 # Default instance for stdio (host/port unused)

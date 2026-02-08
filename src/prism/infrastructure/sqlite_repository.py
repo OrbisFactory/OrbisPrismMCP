@@ -39,6 +39,8 @@ class SqliteIndexRepository:
                 "method_name": r["method_name"],
                 "returns": r["returns"],
                 "params": r["params"],
+                "const_name": r["const_name"],
+                "const_value": r["const_value"],
                 "file_path": r["file_path"],
             }
             for r in rows
@@ -67,6 +69,6 @@ class SqliteIndexRepository:
                 conn, package_prefix, prefix_match=prefix_match, limit=limit, offset=offset
             )
 
-    def get_stats(self, db_path: Path) -> tuple[int, int]:
+    def get_stats(self, db_path: Path) -> tuple[int, int, int]:
         with _db.connection(db_path) as conn:
             return _db.get_stats(conn)

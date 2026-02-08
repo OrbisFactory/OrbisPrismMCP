@@ -1,12 +1,16 @@
-from typing import Any
-from ..ports import ConfigProvider
-from ..infrastructure import db, config_impl
+from pathlib import Path
+from typing import Any, TYPE_CHECKING
+from ..infrastructure import db
 
-def get_hierarchy(config: ConfigProvider, version: str, package: str, class_name: str) -> dict[str, Any]:
+if TYPE_CHECKING:
+    from ..ports import ConfigProvider
+
+def get_hierarchy(config_provider: "ConfigProvider", version: str, package: str, class_name: str, root: Path | None = None) -> dict[str, Any]:
     """
     Returns the hierarchy of a class: parents and implemented interfaces.
     """
-    db_path = config_impl.get_db_path(version=version)
+    root = root or config_provider.get_project_root()
+    db_path = config_provider.get_db_path(root, version)
     
     with db.connection(db_path) as conn:
         root_class = db.get_class_and_methods(conn, package, class_name)

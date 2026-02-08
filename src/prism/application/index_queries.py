@@ -104,8 +104,8 @@ def get_index_stats(
     db_path = config_provider.get_db_path(root, resolved_version)
     if not db_path.is_file():
         return (None, {"error": "no_db", "message": f"Database for version {resolved_version or 'active'} does not exist. Run prism index first."})
-    classes, methods = index_repository.get_stats(db_path)
-    return ({"version": resolved_version, "classes": classes, "methods": methods}, None)
+    classes, methods, constants = index_repository.get_stats(db_path)
+    return ({"version": resolved_version, "classes": classes, "methods": methods, "constants": constants}, None)
 
 
 def get_context_list(config_provider: "ConfigProvider", root: Path | None) -> dict:

@@ -23,12 +23,15 @@ RE_CLASS = re.compile(
 RE_METHOD = re.compile(
     r"(@\w+\s+)?public\s+(?:abstract\s+|static\s+|final\s+|synchronized\s+|native\s+)*([\w\<\>\[\]\.]+)\s+(\w+)\s*\(([^\)]*)\)"
 )
+RE_CONSTANT = re.compile(
+    r"public\s+static\s+final\s+([\w\<\>\[\]\.]+)\s+(\w+)\s*=\s*(.*?);"
+)
 
 
-def _extract_from_java(content: str, file_path: str) -> list[tuple[str, str, str, list[dict], str | None, str | None]]:
+def _extract_from_java(content: str, file_path: str) -> list[tuple[str, str, str, list[dict], str | None, str | None, list[dict]]]:
     """
-    Extract from a Java file: package, class_name, kind, methods, parent and interfaces.
-    Uses bracket tracking to correctly attribute methods to inner/multiple classes.
+    Extract from a Java file: package, class_name, kind, methods, parent, interfaces, and constants.
+    Uses bracket tracking to correctly attribute items to inner/multiple classes.
     """
     pkg_match = RE_PACKAGE.search(content)
     if not pkg_match:
@@ -70,8 +73,10 @@ def _extract_from_java(content: str, file_path: str) -> list[tuple[str, str, str
         
         if end_search == -1: end_search = len(content)
         
-        # Extract methods only within [first_brace, end_search]
+        # Extract items only within [first_brace, end_search]
         class_content = content[first_brace:end_search]
+        
+        # Methods
         methods = []
         for m in RE_METHOD.finditer(class_content):
             # RE_METHOD groups: 1:@Annotation, 2:Returns, 3:Name, 4:Params
@@ -86,15 +91,25 @@ def _extract_from_java(content: str, file_path: str) -> list[tuple[str, str, str
                 "annotation": m.group(1).strip() if m.group(1) else None,
             })
         
-        final_results.append((pkg, name, kind, methods, parent, interfaces))
+        # Constants
+        constants = []
+        for c in RE_CONSTANT.finditer(class_content):
+            # RE_CONSTANT groups: 1:Type, 2:Name, 3:Value
+            constants.append({
+                "name": c.group(2),
+                "type": c.group(1),
+                "value": c.group(3).strip().strip('"'),
+            })
+        
+        final_results.append((pkg, name, kind, methods, parent, interfaces, constants))
         
     return final_results
 
 
-def run_index(root: Path | None = None, version: str = "release") -> tuple[bool, str | tuple[int, int]]:
+def run_index(root: Path | None = None, version: str = "release") -> tuple[bool, str | tuple[int, int, int]]:
     """
-    Walk workspace/decompiled/<version>, extract classes and methods with regex,
-    and fill prism_api_<version>.db. Returns (True, (num_classes, num_methods));
+    Walk workspace/decompiled/<version>, extract classes, methods and constants with regex,
+    and fill prism_api_<version>.db. Returns (True, (num_classes, num_methods, num_constants));
     (False, "no_decompiled") if no code; (False, "db_error") if DB fails.
     """
     root = root or config_impl.get_project_root()
@@ -125,8 +140,10 @@ def run_index(root: Path | None = None, version: str = "release") -> tuple[bool,
                 
                 # Extract and insert
                 results = _extract_from_java(content, file_path_str)
-                for pkg, class_name, kind, methods, parent, interfaces in results:
+                for pkg, class_name, kind, methods, parent, interfaces, constants in results:
                     class_id = db.insert_class(conn, pkg, class_name, kind, file_path_str, parent, interfaces)
+                    
+                    # Insert methods
                     for m in methods:
                         db.insert_method(
                             conn,
@@ -142,10 +159,29 @@ def run_index(root: Path | None = None, version: str = "release") -> tuple[bool,
                             pkg,
                             class_name,
                             kind,
-                            m["method"],
-                            m["returns"],
-                            m["params"],
+                            method_name=m["method"],
+                            returns=m["returns"],
+                            params=m["params"],
                         )
+                    
+                    # Insert constants
+                    for c in constants:
+                        db.insert_constant(
+                            conn,
+                            class_id,
+                            c["name"],
+                            c["type"],
+                            c["value"],
+                        )
+                        db.insert_fts_row(
+                            conn,
+                            pkg,
+                            class_name,
+                            kind,
+                            const_name=c["name"],
+                            const_value=c["value"],
+                        )
+                
                 files_processed += 1
                 if files_processed % BATCH_COMMIT_FILES == 0:
                     conn.commit()

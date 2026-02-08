@@ -120,8 +120,8 @@ def cmd_context_init(root: Path | None = None, version: str | None = None) -> in
         out.phase(i18n.t("cli.build.indexing_version", version=v))
         ok, payload = extractor.run_index(root, v)
         if ok:
-            classes, methods = payload
-            out.success(i18n.t("cli.build.indexed", version=v, classes=classes, methods=methods))
+            classes, methods, constants = payload
+            out.success(i18n.t("cli.build.indexed", version=v, classes=classes, methods=methods, constants=constants))
         elif payload == "no_decompiled":
             print(i18n.t("cli.build.skipped_no_code", version=v))
         else:
@@ -198,16 +198,16 @@ def cmd_index(root: Path | None = None, version: str | None = None) -> int:
         for v in VALID_SERVER_VERSIONS:
             ok, payload = extractor.run_index(root, v)
             if ok:
-                classes, methods = payload
-                out.success(i18n.t("cli.index.success", classes=classes, methods=methods, version=v))
+                classes, methods, constants = payload
+                out.success(i18n.t("cli.index.success", classes=classes, methods=methods, constants=constants, version=v))
             elif payload != "no_decompiled":
                 out.error(i18n.t("cli.index.db_error"))
                 return 1
         return 0
     success, payload = extractor.run_index(root, version)
     if success:
-        classes, methods = payload
-        out.success(i18n.t("cli.index.success", classes=classes, methods=methods, version=version))
+        classes, methods, constants = payload
+        out.success(i18n.t("cli.index.success", classes=classes, methods=methods, constants=constants, version=version))
         return 0
     out.error(i18n.t(f"cli.index.{payload}"))
     return 1
