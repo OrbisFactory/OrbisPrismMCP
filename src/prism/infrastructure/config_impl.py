@@ -9,9 +9,11 @@ from ..domain.constants import VALID_SERVER_VERSIONS
 # Hytale server JAR filename
 HYTALE_JAR_NAME = "HytaleServer.jar"
 
-# Core package kept after pruning
-CORE_PACKAGE = "com.hypixel.hytale"
-CORE_PACKAGE_PATH = "com/hypixel/hytale"
+# Core packages kept after pruning
+CORE_PACKAGE_PATHS = [
+    "com/hypixel/hytale",
+    "com/hypixel/fastutil",
+]
 
 # Environment variables (BluePrint / convention)
 ENV_JAR_PATH = "HYTALE_JAR_PATH"
