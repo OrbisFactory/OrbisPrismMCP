@@ -77,8 +77,8 @@ def parse_mcp_args(args: list[str], start_index: int) -> tuple[str, str, int]:
     host = "0.0.0.0"
     port = 8000
     env_transport = os.environ.get(ENV_MCP_TRANSPORT, "").strip().lower()
-    if env_transport in ("http", "streamable-http"):
-        transport = "streamable-http"
+    if env_transport in ("http", "streamable-http", "sse"):
+        transport = "sse"
     try:
         port = int(os.environ.get(ENV_MCP_PORT, "8000"))
         port = max(1, min(port, 65535))
@@ -89,7 +89,7 @@ def parse_mcp_args(args: list[str], start_index: int) -> tuple[str, str, int]:
     while i < len(args):
         a = args[i]
         if a in MCP_HTTP_FLAGS:
-            transport = "streamable-http"
+            transport = "sse"
             i += 1
         elif a in MCP_PORT_FLAGS:
             if i + 1 < len(args):

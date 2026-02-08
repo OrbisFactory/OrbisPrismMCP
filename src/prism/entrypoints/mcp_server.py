@@ -282,18 +282,19 @@ def run(
 ) -> None:
     """
     Start the MCP server. Uses stdio transport by default.
-    If transport is "streamable-http", listens on host:port (useful for Docker).
+    If transport is "sse", listens on host:port (useful for Docker).
     """
-    if transport == "streamable-http":
+    if transport == "sse":
         app = FastMCP("orbis-prism", host=host, port=port)
         _register_tools(app)
         server_to_run = app
     else:
         server_to_run = mcp
+
     try:
-        if transport == "streamable-http":
-            server_to_run.run(transport="streamable-http")
+        if transport == "sse":
+            server_to_run.run(transport="sse")
         else:
-            server_to_run.run()
+            server_to_run.run(transport="stdio")
     except KeyboardInterrupt:
         pass  # Clean exit on close (Ctrl+C or client disconnect)

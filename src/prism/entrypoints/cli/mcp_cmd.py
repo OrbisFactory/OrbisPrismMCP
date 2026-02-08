@@ -15,13 +15,13 @@ def cmd_mcp(
     host: str = "0.0.0.0",
     port: int = 8000,
 ) -> int:
-    """Starts the MCP server for AI. Default is stdio; with transport streamable-http listens on host:port."""
+    """Starts the MCP server for AI. Default is stdio; with transport sse (HTTP) listens on host:port."""
     root = _root or config_impl.get_project_root()
     if sys.stderr.isatty():
-        if transport == "streamable-http":
+        if transport == "sse":
             print(i18n.t("cli.mcp.instructions_http_title"), file=sys.stderr)
             print(i18n.t("cli.mcp.instructions_http_ready", host=host, port=port), file=sys.stderr)
-            print(i18n.t("cli.mcp.instructions_http_url", url=f"http://{host}:{port}/mcp"), file=sys.stderr)
+            print(i18n.t("cli.mcp.instructions_http_url", url=f"http://{host}:{port}/sse"), file=sys.stderr)
         else:
             cwd = str(root.resolve())
             command = sys.executable
