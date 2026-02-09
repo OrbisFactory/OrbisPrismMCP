@@ -3,6 +3,7 @@
 **[Read in English](README.md)**
 
 > "Deconstruct the engine, illuminate the API."
+<img width="937" height="404" alt="image" src="https://github.com/user-attachments/assets/e973c3fe-2ce2-4087-97e5-a20bff3d4109" />
 
 **Orbis Prism** es un conjunto de herramientas diseñado para el ecosistema de modding de Hytale. Su objetivo es descomponer el servidor oficial (`HytaleServer.jar`), aislar su núcleo lógico y proporcionar una interfaz de consulta inteligente (MCP) asistida por IA para desarrolladores.
 
