@@ -1,5 +1,5 @@
 # src/prism/entrypoints/cli/lang.py
-#? Comandos 'lang' para gestionar el idioma del CLI, con Typer.
+#? 'lang' commands for managing the CLI language, using Typer.
 
 import sys
 from pathlib import Path
@@ -12,14 +12,14 @@ from ... import i18n
 from ...infrastructure import config_impl
 from . import out
 
-#_ Creamos una sub-aplicación de Typer para los comandos 'lang'
+#_ Create a Typer sub-application for the 'lang' commands
 app = typer.Typer(help=i18n.t("cli.lang.help"))
 
 @app.command(name="list")
 def list_cmd(
     ctx: typer.Context
 ) -> int:
-    """Lista los idiomas disponibles y marca el actual."""
+    """Lists available languages and marks the current one."""
     root: Path = ctx.obj["root"]
     current = i18n.get_current_locale(root)
     locales: list[Tuple[str, str]] = i18n.get_available_locales()
@@ -39,10 +39,10 @@ def list_cmd(
 @app.command(name="set")
 def set_cmd(
     ctx: typer.Context,
-    lang_code: Annotated[str, typer.Argument(help="Código del idioma (ej. \"en\", \"es\").", 
+    lang_code: Annotated[str, typer.Argument(help="Language code (e.g., \"en\", \"es\").", 
                                             choices=[code for code, _ in i18n.get_available_locales()])]
 ) -> int:
-    """Cambia el idioma guardado en .prism.json."""
+    """Changes the language saved in .prism.json."""
     root: Path = ctx.obj["root"]
     code = lang_code.strip().lower()
     
@@ -56,4 +56,4 @@ def set_cmd(
     out.success(i18n.t("lang.set.success", lang=code))
     return 0
 
-# La función run_lang se elimina porque Typer se encarga del dispatching.
+# The run_lang function is removed because Typer handles dispatching.

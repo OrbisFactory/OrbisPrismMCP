@@ -1,5 +1,5 @@
 # src/prism/entrypoints/cli/config.py
-#? Comandos 'config' para gestionar la configuración interna, con Typer.
+#? 'config' commands for managing internal configuration, using Typer.
 
 import sys
 from pathlib import Path
@@ -13,16 +13,16 @@ from ...infrastructure import config_impl
 from ...infrastructure import detection
 from . import out
 
-#_ Creamos una sub-aplicación de Typer para los comandos 'config'
+#_ Create a Typer sub-application for the 'config' commands
 app = typer.Typer(help=i18n.t("cli.config.help"))
 
 @app.command(name="set")
 def set_config_cmd(
     ctx: typer.Context,
-    key: Annotated[str, typer.Argument(help="Clave de configuración (ej. \"game_path\", \"jadx_path\").")],
-    value: Annotated[str, typer.Argument(help="Valor a establecer para la clave.")],
+    key: Annotated[str, typer.Argument(help="Configuration key (e.g., \"game_path\", \"jadx_path\").")],
+    value: Annotated[str, typer.Argument(help="Value to set for the key.")],
 ) -> int:
-    """Establece un par clave-valor de configuración."""
+    """Sets a configuration key-value pair."""
     root: Path = ctx.obj["root"]
 
     if key == "game_path":
@@ -76,4 +76,4 @@ def set_config_cmd(
         out.error(i18n.t("cli.config.unknown_key", key=key))
         return 1
 
-# La función run_config se elimina porque Typer se encarga del dispatching.
+# The run_config function is removed because Typer handles dispatching.

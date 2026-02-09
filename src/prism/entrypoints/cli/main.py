@@ -1,4 +1,4 @@
-# Punto de entrada del CLI: dispatch por subcomando.
+# CLI entry point: dispatch by subcommand.
 
 import sys
 from pathlib import Path
@@ -12,38 +12,38 @@ from ...infrastructure import config_impl
 from . import branding
 from . import context
 from . import lang
-from . import config #!AJUSTE_IMPORTACION
+from . import config #!IMPORT_ADJUSTMENT
 from . import query
 from . import mcp_cmd
 
 
-#_ Creamos la aplicación principal de Typer
+#_ Create the main Typer application
 app = typer.Typer(
     name="prism",
     help="Orbis Prism MCP - Hytale Modding Toolkit."
 )
 
-#_ Añadimos el logo al inicio de la aplicación
+#_ Add the logo at the application's start
 @app.callback()
 def main_callback(
     ctx: typer.Context,
 ):  
-    """Muestra el logo al inicio y establece el contexto de la raíz del proyecto."""
+    """Displays the logo at startup and sets the project root context."""
     branding.print_logo()
     ctx.ensure_object(dict)
     ctx.obj["root"] = config_impl.get_project_root()
 
 
-#_ Agregamos los subcomandos al CLI principal
-#_ Cada módulo de comando (context, query, etc.) se convertirÃ¡ en un sub-aplicación de Typer.
+#_ Add subcommands to the main CLI
+#_ Each command module (context, query, etc.) will become a Typer sub-application.
 app.add_typer(context.app, name="context", aliases=["ctx"], help=i18n.t("cli.context.help"))
 app.add_typer(query.app, name="query", help=i18n.t("cli.query.help"))
 app.add_typer(mcp_cmd.app, name="mcp", help=i18n.t("cli.mcp.help"))
 app.add_typer(lang.app, name="lang", help=i18n.t("cli.lang.help"))
-app.add_typer(config_cmd.app, name="config", help=i18n.t("cli.config.help")) # Renombramos config_impl a config para el CLI
+app.add_typer(config.app, name="config", help=i18n.t("cli.config.help")) # We rename config_impl to config for the CLI
 
 def main() -> int:
     """CLI entry point."""
-    #_ Typer maneja la inicialización de colorama y la gestión de argumentos
+    #_ Typer handles colorama initialization and argument management
     app()
     return 0

@@ -1,5 +1,5 @@
 # src/prism/entrypoints/cli/out.py
-#? Salida del CLI con Rich: fases, éxito, error, tablas y spinners.
+#? Rich CLI Output: phases, success, error, tables, and spinners.
 
 from contextlib import contextmanager
 from typing import Any, Generator, List, Dict
@@ -7,30 +7,30 @@ from typing import Any, Generator, List, Dict
 from rich.console import Console
 from rich.table import Table
 
-#_ Instancia única de la consola para toda la salida
+#_ Single console instance for all output
 _console = Console()
 
 def phase(msg: str) -> None:
-    """Imprime un encabezado de fase en stdout (cian)."""
+    """Prints a phase header to stdout (cyan)."""
     _console.print(f"[cyan]{msg}[/cyan]")
 
 def success(msg: str) -> None:
-    """Imprime un mensaje de éxito en stdout (verde)."""
+    """Prints a success message to stdout (green)."""
     _console.print(f"[green]✔ {msg}[/green]")
 
 def error(msg: str) -> None:
-    """Imprime un mensaje de error en stderr (rojo)."""
+    """Prints an error message to stderr (red)."""
     _console.print(f"[red]✖ {msg}[/red]", style="bold")
 
 def table(title: str, data: List[Dict[str, Any]], columns: List[str] | None = None) -> None:
     """
-    Imprime una lista de diccionarios como una tabla bien formateada.
+    Prints a list of dictionaries as a well-formatted table.
     
     Args:
-        title (str): El título de la tabla.
-        data (List[Dict[str, Any]]): Lista de diccionarios para las filas.
-        columns (List[str] | None): Opcional. Lista de claves a usar como columnas. 
-                                    Si es None, se usan las claves del primer diccionario.
+        title (str): The title of the table.
+        data (List[Dict[str, Any]]): A list of dictionaries for the rows.
+        columns (List[str] | None): Optional. A list of keys to use as columns. 
+                                    If None, the keys from the first dictionary are used.
     """
     if not data:
         _console.print(f"No data to display for '{title}'")
@@ -38,14 +38,14 @@ def table(title: str, data: List[Dict[str, Any]], columns: List[str] | None = No
 
     grid = Table(title=title, show_header=True, header_style="bold magenta")
     
-    #_ Usa las claves del primer elemento si no se especifican columnas
+    #_ Use keys from the first item if columns are not specified
     cols = columns or list(data[0].keys())
     
     for col in cols:
         grid.add_column(col)
     
     for item in data:
-        #_ Convierte todos los valores a string para la tabla
+        #_ Convert all values to string for the table
         grid.add_row(*(str(item.get(col, '')) for col in cols))
         
     _console.print(grid)
@@ -53,10 +53,10 @@ def table(title: str, data: List[Dict[str, Any]], columns: List[str] | None = No
 @contextmanager
 def status(msg: str) -> Generator[None, None, None]:
     """
-    Muestra un spinner mientras se ejecuta una tarea.
+    Displays a spinner while a task is running.
 
-    Uso:
-        with out.status("Haciendo algo..."):
+    Usage:
+        with out.status("Doing something..."):
             time.sleep(2)
     """
     with _console.status(f"[cyan]{msg}[/cyan]", spinner="dots"):

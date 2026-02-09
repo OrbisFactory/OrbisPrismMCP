@@ -1,5 +1,5 @@
 # src/prism/infrastructure/decompile.py
-#? Pipeline de descompilación: JADX.
+#? Decompilation pipeline: JADX.
 
 import os
 import re
@@ -14,7 +14,7 @@ from . import config_impl
 from . import detection
 from . import prune
 
-#_ Línea de progreso de JADX, ej. "INFO  - progress: 44591 of 46688 (95%)"
+#_ JADX progress line e.g. "INFO  - progress: 44591 of 46688 (95%)"
 JADX_PROGRESS_RE = re.compile(r"progress:\s*(\d+)\s+of\s+(\d+)\s+\((\d+)%\)")
 
 
@@ -26,14 +26,14 @@ def run_jadx(
     single_thread_mode: bool = False,
 ) -> tuple[bool, bool]:
     """
-    Ejecuta JADX en el JAR y escribe la salida en out_dir.
-    Muestra una barra de progreso de Rich para las líneas de progreso de JADX; otras líneas (ej. errores) van a stderr.
-    Si se proporciona log_path, cada línea se guarda en el archivo de log.
-    Retorna (True, had_errors): True si terminó (incluso con errores); had_errors si el código de salida != 0.
-    (False, False) si ocurrió una excepción (timeout, OSError).
+    Runs JADX on the JAR and writes the output to out_dir.
+    Shows a Rich progress bar for JADX progress lines; other lines (e.g., errors) go to stderr.
+    If log_path is provided, every line is saved to the log file.
+    Returns (True, had_errors): True if it finished (even with errors); had_errors if the exit code != 0.
+    (False, False) if an exception occurred (timeout, OSError).
     """
     out_dir.mkdir(parents=True, exist_ok=True)
-    #_ Obtenemos el número de CPUs, con un fallback a 4 si no se puede detectar
+    #_ Get the number of CPUs, with a fallback to 4 if it cannot be detected
     threads = 1 if single_thread_mode else (os.cpu_count() or 4)
 
     cmd = [
@@ -70,7 +70,7 @@ def run_jadx(
             TimeElapsedColumn(),
             transient=True,
         ) as progress:
-            task = progress.add_task("[cyan]Descompilando", total=None)
+            task = progress.add_task("[cyan]Decompiling", total=None)
             try:
                 for line in proc.stdout:
                     if log_file:
@@ -90,20 +90,20 @@ def run_jadx(
                     log_file.write(f"\n--- exit code: {proc.returncode} ---\n")
                     log_file.close()
 
-        #_ Acepta la salida incluso si JADX reporta errores (común en JARs grandes); la poda usa lo que se generó
+        #_ Accept the output even if JADX reports errors (common on large JARs); pruning uses what was generated
         return (True, proc.returncode != 0)
     except (subprocess.TimeoutExpired, OSError):
         if log_path:
             log_path.parent.mkdir(parents=True, exist_ok=True)
             with open(log_path, "w", encoding="utf-8") as f:
-                f.write("La ejecución de JADX falló (timeout o error).\n")
+                f.write("JADX execution failed (timeout or error).\n")
         return (False, False)
 
 
 def run_decompile_only_for_version(root: Path | None, version: str, single_thread_mode: bool = False) -> tuple[bool, str]:
     """
-    Ejecuta solo JADX para una versión (release o prerelease). No ejecuta la poda.
-    Escribe en decompiled_raw/<version>. Retorna (True, "") o (False, "no_jar"|"no_jadx"|"jadx_failed").
+    Runs JADX only for a version (release or prerelease). Does not run pruning.
+    Writes to decompiled_raw/<version>. Returns (True, "") or (False, "no_jar"|"no_jadx"|"jadx_failed").
     """
     root = root or config_impl.get_project_root()
     if version == "release":
@@ -143,8 +143,8 @@ def run_decompile_only(
     single_thread_mode: bool = False,
 ) -> tuple[bool, str]:
     """
-    Ejecuta JADX solo (sin podar) para una o más versiones. Si versions es None, usa aquellas con un JAR configurado.
-    Retorna (True, "") en éxito; (False, "no_jar"|"no_jadx"|"jadx_failed") en fallo.
+    Runs JADX only (without pruning) for one or more versions. If versions is None, uses those with a configured JAR.
+    Returns (True, "") on success; (False, "no_jar"|"no_jadx"|"jadx_failed") on failure.
     """
     root = root or config_impl.get_project_root()
     if versions is None:
@@ -168,8 +168,8 @@ def run_decompile_only(
 
 def run_decompile_and_prune_for_version(root: Path | None, version: str) -> tuple[bool, str]:
     """
-    Descompila y poda una sola versión (release o prerelease).
-    Retorna (True, "") o (False, "no_jar"|"no_jadx"|"jadx_failed").
+    Decompiles and prunes a single version (release or prerelease).
+    Returns (True, "") or (False, "no_jar"|"no_jadx"|"jadx_failed").
     """
     root = root or config_impl.get_project_root()
     if version == "release":
@@ -203,7 +203,7 @@ def run_decompile_and_prune_for_version(root: Path | None, version: str) -> tupl
     if had_errors:
         print(i18n.t("cli.decompile.jadx_finished_with_errors"), file=sys.stderr)
 
-    #_ Poda: raw -> decompiled (solo com.hypixel.hytale), con log
+    #_ Pruning: raw -> decompiled (only com.hypixel.hytale), with log
     ok_prune, stats = prune.prune_to_core(raw_dir, decompiled_dir)
     if not ok_prune:
         print(i18n.t("cli.prune.no_core", raw_dir=raw_dir), file=sys.stderr)
@@ -217,10 +217,10 @@ def run_decompile_and_prune(
     versions: list[str] | None = None,
 ) -> tuple[bool, str]:
     """
-    Descompila y poda una o más versiones. Si versions es None, usa aquellas con JAR
-    configurado (release y/o prerelease). Si no hay ninguno configurado, recurre a jar_path
-    y descompila a release.
-    Retorna (True, "") en éxito; (False, "no_jar"|"no_jadx"|"jadx_failed") en fallo.
+    Decompiles and prunes one or more versions. If versions is None, uses those with a configured JAR
+    (release and/or prerelease). If none are configured, falls back to jar_path
+    and decompiles to release.
+    Returns (True, "") on success; (False, "no_jar"|"no_jadx"|"jadx_failed") on failure.
     """
     root = root or config_impl.get_project_root()
     if versions is None:
@@ -230,7 +230,7 @@ def run_decompile_and_prune(
         if config_impl.get_jar_path_prerelease_from_config(root):
             versions.append("prerelease")
         if not versions:
-            #_ Compatibilidad: un solo JAR en jar_path -> descompila a release
+            #_ Compatibility: a single JAR in jar_path -> decompile to release
             if config_impl.get_jar_path_from_config(root):
                 versions = ["release"]
             else:

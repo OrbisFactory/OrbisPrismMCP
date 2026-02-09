@@ -1,5 +1,5 @@
 # src/prism/infrastructure/prune.py
-#? Poda: copia solo com.hypixel.hytale de decompiled_raw a decompiled.
+#? Pruning: copies only com.hypixel.hytale from decompiled_raw to decompiled.
 
 import sys
 import shutil
@@ -9,18 +9,18 @@ from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn, TimeEl
 
 from . import config_impl
 
-#_ Subdirectorios donde JADX puede dejar los fuentes (depende de la versión)
+#_ Subdirectories where JADX may leave sources (version-dependent)
 PRUNE_SOURCE_CANDIDATES = (
-    "sources",  #_ Muchas versiones de JADX usan -d y escriben en <out>/sources/
-    "",        #_ O directamente en la raíz de -d
+    "sources",  #_ Many JADX versions use -d and write to <out>/sources/
+    "",        #_ Or directly in the -d root
 )
 
 
 def prune_to_core(raw_dir: Path, dest_dir: Path) -> tuple[bool, dict | None]:
     """
-    Copia solo los paquetes principales de raw_dir a dest_dir.
-    Los paquetes se definen en config_impl.CORE_PACKAGE_PATHS.
-    Retorna (True, {"files": N, "source_subdir": "sources"|"."}) o (False, None) si no se encuentra.
+    Copies only the core packages from raw_dir to dest_dir.
+    Packages are defined in config_impl.CORE_PACKAGE_PATHS.
+    Returns (True, {"files": N, "source_subdir": "sources"|"."}) or (False, None) if not found.
     """
     if dest_dir.exists():
         shutil.rmtree(dest_dir)
@@ -54,7 +54,7 @@ def prune_to_core(raw_dir: Path, dest_dir: Path) -> tuple[bool, dict | None]:
                 target = dest_dir / core_rel
                 all_files = [p for p in source_core.rglob("*") if p.is_file()]
                 
-                task = progress.add_task(f"[cyan]Podando {core_rel}", total=len(all_files))
+                task = progress.add_task(f"[cyan]Pruning {core_rel}", total=len(all_files))
                 
                 for src in all_files:
                     rel = src.relative_to(source_core)
@@ -73,10 +73,11 @@ def prune_to_core(raw_dir: Path, dest_dir: Path) -> tuple[bool, dict | None]:
 
 def run_prune_only_for_version(root: Path | None, version: str) -> tuple[bool, str]:
     """
-    Ejecuta solo la poda: copia com/hypixel/hytale de decompiled_raw/<version> a decompiled/<version>.
-    Retorna (True, "") o (False, "no_raw"|"prune_failed").
+    Runs only the pruning: copies com/hypixel/hytale from decompiled_raw/<version> to decompiled/<version>.
+    Returns (True, "") or (False, "no_raw"|"prune_failed").
     """
     from .. import i18n
+    from ..entrypoints.cli import out
 
     root = root or config_impl.get_project_root()
     raw_dir = config_impl.get_decompiled_raw_dir(root, version)
@@ -97,8 +98,8 @@ def run_prune_only(
     versions: list[str] | None = None,
 ) -> tuple[bool, str]:
     """
-    Ejecuta solo la poda para una o más versiones.
-    Si versions es None, procesa aquellas que tengan una carpeta decompiled_raw existente.
+    Runs only the pruning for one or more versions.
+    If versions is None, it processes those that have an existing decompiled_raw folder.
     """
     root = root or config_impl.get_project_root()
     if versions is None:
