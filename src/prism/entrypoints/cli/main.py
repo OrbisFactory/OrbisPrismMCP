@@ -38,6 +38,7 @@ def main_callback(
 #_ Add subcommands to the main CLI
 #_ Each command module (context, query, etc.) will become a Typer sub-application.
 app.add_typer(context.app, name="context", help=i18n.t("cli.context.help"))
+app.add_typer(context.app, name="ctx", help="Alias for 'context'.") # Add alias for context
 app.add_typer(query.app, name="query", help=i18n.t("cli.query.help"))
 app.add_typer(mcp_cmd.app, name="mcp", help=i18n.t("cli.mcp.help"))
 app.add_typer(lang.app, name="lang", help=i18n.t("cli.lang.help"))
