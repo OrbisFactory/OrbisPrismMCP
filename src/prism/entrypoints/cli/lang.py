@@ -2,6 +2,7 @@
 
 import sys
 from pathlib import Path
+import argparse # NEW IMPORT
 
 from ... import i18n
 from ...infrastructure import config_impl
@@ -38,17 +39,11 @@ def cmd_lang_set(lang_code: str, root: Path | None = None) -> int:
     return 0
 
 
-def run_lang(args: list[str], root: Path) -> int:
+def run_lang(args: argparse.Namespace, root: Path) -> int:
     """Dispatch of the lang command (list | set)."""
-    if len(args) < 2:
-        return 0  # main will show help
-    sub = args[1].lower()
-    if sub == "list":
+    if args.lang_command == "list":
         return cmd_lang_list(root)
-    if sub == "set":
-        if len(args) < 3:
-            print(i18n.t("cli.lang.set_usage"), file=sys.stderr)
-            return 1
-        return cmd_lang_set(args[2], root)
-    print(i18n.t("cli.unknown_command", cmd=f"lang {sub}"), file=sys.stderr)
+    elif args.lang_command == "set":
+        return cmd_lang_set(args.lang_code, root)
+    print(i18n.t("cli.unknown_command", cmd=f"lang {args.lang_command}"), file=sys.stderr)
     return 1

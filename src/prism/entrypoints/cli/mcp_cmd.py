@@ -2,11 +2,12 @@
 
 import sys
 from pathlib import Path
+import argparse # NEW IMPORT
 
 from ... import i18n
 from ...infrastructure import config_impl
 
-from . import args as cli_args
+# from . import args as cli_args # REMOVED
 
 
 def cmd_mcp(
@@ -43,7 +44,7 @@ def cmd_mcp(
         return 1
 
 
-def run_mcp(args: list[str], root: Path) -> int:
+def run_mcp(args: argparse.Namespace, root: Path) -> int:
     """Dispatch of the mcp command."""
-    transport, host, port = cli_args.parse_mcp_args(args, 1)
-    return cmd_mcp(root, transport=transport, host=host, port=port)
+    transport = "sse" if args.http else "stdio"
+    return cmd_mcp(root, transport=transport, host=args.host, port=args.port)
