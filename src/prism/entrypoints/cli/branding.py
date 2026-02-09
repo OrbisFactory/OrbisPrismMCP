@@ -8,11 +8,11 @@ console = Console()
 
 #_ ASCII art logo with Rich colors. We use a raw string for the backslashes.
 LOGO = r"""
-[blue] ____  _____ ____  ____  ____  ____ _____ ____ _   _  [/blue]
-[blue]|  _ \| ____/ ___||  _ \|  _ \|  _ \_   _/ ___| | | | [/blue]
-[blue]| |_) |  _| \___ \| |_) | |_) | |_) || | \___ \| |_| | [/blue]
-[blue]|  _ <| |___ ___) |  __/|  _ <|  _ < | |  ___) |  _  | [/blue]
-[blue]|_| \_\_____|____/|_|   |_| \|_| \_\|_| |____/|_| |_| [/blue]
+[blue] _____ ____  ____  ____  ____  ____  ____  __  __[/blue]
+[blue]|  _  | __  | __  |  _  | ___|/ __ \| __  |  \/  |[/blue]
+[blue]| | | | __/ / __/ | | | |___ (  (  ) __/ | |\/| |[/blue]
+[blue]| | | | __ | |    | | | |___ \ \__/ / __  | |  | |[/blue]
+[blue]|_| |_|____| |    |_| |_|____/ \____/____ |_|  |_|[/blue]
 """
 
 VERSION_TEXT = "VERSION 0.4.0 | ORBISFACTORY"
