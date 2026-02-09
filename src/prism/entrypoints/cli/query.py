@@ -3,13 +3,14 @@
 import json
 import sys
 from pathlib import Path
+import argparse # NEW IMPORT
 
 from ...application import search
 from ... import i18n
 from ...domain.constants import VALID_SERVER_VERSIONS
 from ...infrastructure import config_impl
 
-from . import args as cli_args
+# from . import args as cli_args # REMOVED
 
 
 def cmd_query(
@@ -43,10 +44,9 @@ def cmd_query(
     return 0
 
 
-def run_query(args: list[str], root: Path) -> int:
+def run_query(args: argparse.Namespace, root: Path) -> int:
     """Dispatch of the query command."""
-    query_term, version, limit, output_json = cli_args.parse_query_args(args)
-    if not query_term:
+    if not args.term:
         print(i18n.t("cli.query.usage"), file=sys.stderr)
         return 1
-    return cmd_query(root, query_term=query_term, version=version, limit=limit, output_json=output_json)
+    return cmd_query(root, query_term=args.term, version=args.version, limit=args.limit, output_json=args.json)

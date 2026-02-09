@@ -1,5 +1,6 @@
 # context / ctx commands: detect, init, clean, reset, decompile, prune, db, list, use.
 
+import argparse # NEW IMPORT
 import os
 import sys
 from pathlib import Path
@@ -15,7 +16,7 @@ from ...infrastructure import file_config
 from ...infrastructure import prune
 from ...infrastructure import workspace_cleanup
 
-from . import args as cli_args
+# from . import args as cli_args # REMOVED
 from . import out
 
 
@@ -78,7 +79,7 @@ def cmd_context_detect(root: Path | None = None) -> int:
 
 def _resolve_context_versions(root: Path, version: str | None) -> list[str] | None:
     """Determines the list of versions to use; None if no JAR is configured."""
-    if version is not None:
+    if version is not None and version != "all": # Handle 'all' explicitly for versions
         return [version]
     versions = []
     if config_impl.get_jar_path_release_from_config(root):
@@ -90,7 +91,7 @@ def _resolve_context_versions(root: Path, version: str | None) -> list[str] | No
     return versions if versions else None
 
 
-def cmd_context_init(root: Path | None = None, version: str | None = None) -> int:
+def cmd_context_init(root: Path | None = None, version: str | None = None, single_thread_mode: bool = False) -> int:
     """Full pipeline: detect (always at start) → decompile (JADX only) → prune → db. version=None -> all."""
     root = root or config_impl.get_project_root()
     # Always run detect first (same as ctx detect) to ensure JAR and config are up to date.
@@ -103,7 +104,7 @@ def cmd_context_init(root: Path | None = None, version: str | None = None) -> in
 
     out.phase(i18n.t("cli.build.phase_decompile"))
     print(i18n.t("cli.decompile.may_take"))
-    success, err = decompile.run_decompile_only(root, versions=versions_list)
+    success, err = decompile.run_decompile_only(root, versions=versions_list, single_thread_mode=single_thread_mode)
     if not success:
         out.error(i18n.t("cli.build.decompile_failed"))
         out.error(i18n.t(f"cli.decompile.{err}"))
@@ -160,12 +161,15 @@ def cmd_context_reset(root: Path | None = None) -> int:
     return 0
 
 
-def cmd_context_decompile(root: Path | None = None, version: str | None = None) -> int:
+def cmd_context_decompile(root: Path | None = None, version: str | None = None, single_thread_mode: bool = False) -> int:
     """Only JADX → decompiled_raw (without prune). version=None -> all."""
     root = root or config_impl.get_project_root()
     versions = None if version is None else [version]
+    if version == "all":
+        versions = _resolve_context_versions(root, None) # Get all versions if 'all' is specified
+
     print(i18n.t("cli.decompile.may_take"))
-    success, err = decompile.run_decompile_only(root, versions=versions)
+    success, err = decompile.run_decompile_only(root, versions=versions, single_thread_mode=single_thread_mode)
     if success:
         out.success(i18n.t("cli.decompile.success"))
         return 0
@@ -177,6 +181,9 @@ def cmd_prune(root: Path | None = None, version: str | None = None) -> int:
     """Only prune (raw → decompiled). version=None -> all that have raw."""
     root = root or config_impl.get_project_root()
     versions = None if version is None else [version]
+    if version == "all":
+        versions = _resolve_context_versions(root, None) # Get all versions if 'all' is specified
+
     success, err = prune.run_prune_only(root, versions=versions)
     if success:
         if version:
@@ -247,48 +254,30 @@ def cmd_context_use(version_str: str, root: Path | None = None) -> int:
     return 0
 
 
-def run_context(args: list[str], root: Path) -> int:
+def run_context(args: argparse.Namespace, root: Path) -> int:
     """Dispatch for the context | ctx command."""
-    if len(args) < 2:
-        return 0  # main will show help
-    sub = args[1].lower()
-    if sub in ("detect", "detec"):
+    subcommand = args.ctx_command
+
+    if subcommand == "detect":
         return cmd_context_detect(root)
-    if sub == "init":
-        version_arg, invalid = cli_args.parse_version_arg(args, 2)
-        if invalid:
-            out.error(i18n.t("cli.context.use.invalid"))
-            return 1
-        return cmd_context_init(root, version=version_arg)
-    if sub == "clean":
-        target = args[2] if len(args) > 2 else ""
-        return cmd_context_clean(root, target=target)
-    if sub == "reset":
+    elif subcommand == "init":
+        return cmd_context_init(root, version=args.version, single_thread_mode=args.single_thread)
+    elif subcommand == "clean":
+        return cmd_context_clean(root, target=args.target)
+    elif subcommand == "reset":
         return cmd_context_reset(root)
-    if sub == "decompile":
-        version_arg, invalid = cli_args.parse_version_arg(args, 2)
-        if invalid:
-            out.error(i18n.t("cli.context.use.invalid"))
-            return 1
-        return cmd_context_decompile(root, version=version_arg)
-    if sub == "prune":
-        version_arg, invalid = cli_args.parse_version_arg(args, 2)
-        if invalid:
-            out.error(i18n.t("cli.context.use.invalid"))
-            return 1
-        return cmd_prune(root, version=version_arg)
-    if sub == "db":
-        version_arg, invalid = cli_args.parse_version_arg(args, 2)
-        if invalid:
-            out.error(i18n.t("cli.context.use.invalid"))
-            return 1
-        return cmd_index(root, version=version_arg)
-    if sub == "list":
+    elif subcommand == "decompile":
+        return cmd_context_decompile(root, version=args.version, single_thread_mode=args.single_thread)
+    elif subcommand == "prune":
+        return cmd_prune(root, version=args.version)
+    elif subcommand == "db":
+        return cmd_index(root, version=args.version)
+    elif subcommand == "list":
         return cmd_context_list(root)
-    if sub == "use":
-        if len(args) < 3:
-            out.error("Usage: prism context use <release|prerelease>")
-            return 1
-        return cmd_context_use(args[2], root)
-    out.error(i18n.t("cli.unknown_command", cmd=f"context {sub}"))
-    return 1
+    elif subcommand == "use":
+        return cmd_context_use(args.version_str, root)
+    else:
+        # This case should ideally not be reached due to required=True in argparse
+        print(i18n.t("cli.unknown_command", cmd=f"context {subcommand}"), file=sys.stderr)
+        return 1
+

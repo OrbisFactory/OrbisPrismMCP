@@ -2,6 +2,7 @@
 
 import sys
 from pathlib import Path
+import argparse # NEW IMPORT
 
 from ... import i18n
 from ...infrastructure import config_impl
@@ -49,11 +50,13 @@ def cmd_config_set_jar_path(path_str: str, root: Path | None = None) -> int:
     return 0
 
 
-def run_config(args: list[str], root: Path) -> int:
+def run_config(args: argparse.Namespace, root: Path) -> int:
     """Dispatch of the config command (set game_path)."""
-    if len(args) >= 4 and args[1].lower() == "set" and args[2].lower() == "game_path":
-        return cmd_config_set_jar_path(" ".join(args[3:]), root)
-    if len(args) >= 2 and args[1].lower() == "set":
-        print("Usage: prism config_impl set game_path <path>", file=sys.stderr)
-        return 1
-    return 0  # main will show help
+    if args.config_impl_command == "set":
+        if args.key == "game_path":
+            return cmd_config_set_jar_path(args.value, root)
+        else:
+            print(i18n.t("cli.config.unknown_key", key=args.key), file=sys.stderr)
+            return 1
+    print(i18n.t("cli.unknown_command", cmd=f"config_impl {args.config_impl_command}"), file=sys.stderr)
+    return 1

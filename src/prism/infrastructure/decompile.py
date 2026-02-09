@@ -1,5 +1,6 @@
 # Decompilation pipeline: JADX.
 
+import os
 import re
 import sys
 import subprocess
@@ -21,6 +22,7 @@ def run_jadx(
     out_dir: Path,
     jadx_bin: str | Path,
     log_path: Path | None = None,
+    single_thread_mode: bool = False,
 ) -> tuple[bool, bool]:
     """
     Run JADX on the JAR and write output to out_dir.
@@ -30,8 +32,13 @@ def run_jadx(
     (False, False) if an exception occurred (timeout, OSError).
     """
     out_dir.mkdir(parents=True, exist_ok=True)
+    # Obtenemos el número de CPUs, con un fallback a 4 si no se puede detectar
+    threads = os.cpu_count() or 4
+
     cmd = [
         str(jadx_bin),
+        "--threads-count",
+        str(threads),
         "-d",
         str(out_dir.resolve()),
         "-m",
@@ -95,7 +102,7 @@ def run_jadx(
         return (False, False)
 
 
-def run_decompile_only_for_version(root: Path | None, version: str) -> tuple[bool, str]:
+def run_decompile_only_for_version(root: Path | None, version: str, single_thread_mode: bool = False) -> tuple[bool, str]:
     """
     Executes JADX only for a version (release or prerelease). Does not execute prune.
     Writes to decompiled_raw/<version>. Returns (True, "") or (False, "no_jar"|"no_jadx"|"jadx_failed").
@@ -124,7 +131,7 @@ def run_decompile_only_for_version(root: Path | None, version: str) -> tuple[boo
     log_path = logs_dir / f"decompile_{version}_{timestamp}.log"
 
     from .. import i18n
-    ok, had_errors = run_jadx(jar_path, raw_dir, jadx_bin, log_path)
+    ok, had_errors = run_jadx(jar_path, raw_dir, jadx_bin, log_path, single_thread_mode=single_thread_mode)
     if not ok:
         return (False, "jadx_failed")
     if had_errors:
@@ -135,6 +142,7 @@ def run_decompile_only_for_version(root: Path | None, version: str) -> tuple[boo
 def run_decompile_only(
     root: Path | None = None,
     versions: list[str] | None = None,
+    single_thread_mode: bool = False,
 ) -> tuple[bool, str]:
     """
     Executes JADX only (without prune) for one or more versions. If versions is None, uses those with a configured JAR.
@@ -154,7 +162,7 @@ def run_decompile_only(
                 return (False, "no_jar")
 
     for version in versions:
-        ok, err = run_decompile_only_for_version(root, version)
+        ok, err = run_decompile_only_for_version(root, version, single_thread_mode=single_thread_mode)
         if not ok:
             return (False, err)
     return (True, "")
