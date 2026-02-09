@@ -1,12 +1,11 @@
-# src/prism/entrypoints/cli/branding.py
-#? CLI Branding: ASCII logo and version.
-
+import sys
 from rich.console import Console
 from rich.text import Text
 
-console = Console()
+#_ Use stderr for branding to avoid polluting stdout (important for MCP/pipes)
+console = Console(stderr=True)
 
-#_ ASCII art logo with Rich colors. We use a raw string for the backslashes.
+# ... (LOGO and VERSION_TEXT constants remain the same)
 LOGO = r"""
 [blue] ██████╗ ██████╗ ██████╗ ██╗███████╗██████╗ ██████╗ ██╗███████╗███╗   ███╗[/blue]
 [blue]██╔═══██╗██╔══██╗██╔══██╗██║██╔════╝██╔══██╗██╔══██╗██║██╔════╝████╗ ████║[/blue]
@@ -32,5 +31,16 @@ def get_logo_and_version() -> Text:
     return full_output
 
 def print_logo() -> None:
-    """Prints the logo and version directly to the Rich console."""
-    console.print(get_logo_and_version())
+    """
+    Prints the logo and version to the Rich console.
+    Only prints if stderr is a TTY to avoid issues with MCP/Pipes.
+    Falls back to plain text if encoding fails.
+    """
+    if not sys.stderr.isatty():
+        return
+
+    try:
+        console.print(get_logo_and_version())
+    except UnicodeEncodeError:
+        # Fallback for limited encodings (like cp1252 in some Windows environments)
+        sys.stderr.write(f"\n*** {VERSION_TEXT} ***\n\n")
