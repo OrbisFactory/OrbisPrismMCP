@@ -4,6 +4,7 @@
 import sys
 from pathlib import Path
 from typing import Tuple
+from enum import Enum
 
 import typer
 from typing_extensions import Annotated
@@ -11,6 +12,11 @@ from typing_extensions import Annotated
 from ... import i18n
 from ...infrastructure import config_impl
 from . import out
+
+#_ Create a dynamic Enum from the available locales for Typer's choice validation
+available_locales = i18n.get_available_locales()
+LanguageCodeEnum = Enum("LanguageCodeEnum", {code: code for code, name in available_locales})
+
 
 #_ Create a Typer sub-application for the 'lang' commands
 app = typer.Typer(help=i18n.t("cli.lang.help"))
@@ -22,7 +28,7 @@ def list_cmd(
     """Lists available languages and marks the current one."""
     root: Path = ctx.obj["root"]
     current = i18n.get_current_locale(root)
-    locales: list[Tuple[str, str]] = i18n.get_available_locales()
+    locales: list[Tuple[str, str]] = available_locales
 
     table_data = []
     for code, name in locales:
@@ -39,12 +45,12 @@ def list_cmd(
 @app.command(name="set")
 def set_cmd(
     ctx: typer.Context,
-    lang_code: Annotated[str, typer.Argument(help="Language code (e.g., \"en\", \"es\").", 
-                                            choices=[code for code, _ in i18n.get_available_locales()])]
+    lang_code: Annotated[LanguageCodeEnum, typer.Argument(help="Language code (e.g., \"en\", \"es\").")]
 ) -> int:
     """Changes the language saved in .prism.json."""
     root: Path = ctx.obj["root"]
-    code = lang_code.strip().lower()
+    #_ The lang_code from Typer is an Enum member, we need its value
+    code = lang_code.value
     
     if not i18n.is_locale_available(code):
         out.error(i18n.t("lang.set.invalid", lang=code))
