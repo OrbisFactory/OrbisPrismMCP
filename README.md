@@ -100,28 +100,25 @@ The command to run when getting started is **`python main.py ctx init`** (or `co
      ```
      Then run `python main.py ctx init` again.
 
-## 🛠 CLI commands
+## 🛠 CLI Commands
 
-The recommended **initial** command is **`python main.py ctx init`** (or `context init`): it runs detect at the start, then decompiles, prunes, and indexes. You can use `ctx` as a shorthand for `context`.
+The CLI is now powered by **Typer**, providing a better user experience with enhanced help, autocompletion, and validation. The recommended **initial** command is **`python main.py context init`**.
 
-| Command                                                     | Description                                                                                             |
-| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| `python main.py ctx init [release\|prerelease\|--all]`      | **Initial command.** Full pipeline: runs detect, then decompiles (JADX), prunes, and indexes to SQLite. |
-| `python main.py ctx detect`                                 | Detects HytaleServer.jar (and release/prerelease if present) and saves configuration to `.prism.json`.  |
-| `python main.py ctx clean <db\|build\|all>`                 | Clean: `db` (databases only), `build` (decompiled output), `all` (everything).                          |
-| `python main.py ctx reset`                                  | Resets the project to zero (removes DB, build, and `.prism.json`).                                      |
-| `python main.py ctx decompile [release\|prerelease\|--all]` | JADX only → `workspace/decompiled_raw/<version>`.                                                       |
-| `python main.py ctx prune [release\|prerelease\|--all]`     | Prune: copies only `com.hypixel.hytale` from raw to decompiled.                                         |
-| `python main.py ctx db [release\|prerelease\|--all]`        | Indexes the code into SQLite (FTS5).                                                                    |
-| `python main.py ctx list`                                   | Lists indexed contexts (release/prerelease) and which is active (\*).                                   |
-| `python main.py ctx use <release\|prerelease>`              | Sets the active context.                                                                                |
-| `python main.py query <term> [release\|prerelease]`         | Searches the indexed DB (FTS5).                                                                         |
-| `python main.py mcp [--http] [--port N] [--host DIR]`       | Starts the MCP server. stdio by default; with `--http` exposes HTTP on the port (default 8000).         |
-| `python main.py lang list`                                  | Lists available languages.                                                                              |
-| `python main.py lang set <code>`                            | Changes the language (e.g. `lang set en`).                                                              |
-| `python main.py config_impl set game_path <path>`           | Sets the game path (root folder or JAR). Launcher → Settings → Open Directory.                          |
+| Command | Description |
+|---|---|
+| `python main.py context init` | **Initial command.** Runs the full pipeline: detect, decompile, prune, and index. |
+| `python main.py context detect` | Detects `HytaleServer.jar` and saves the configuration. |
+| `python main.py context clean <db\|build\|all>` | Cleans generated artifacts. Asks for confirmation on `all`. |
+| `python main.py context reset` | Resets the project to a clean state. Asks for confirmation. |
+| `python main.py context list` | Lists indexed versions and shows the active one. |
+| `python main.py context use <VERSION>` | Sets the active version (`release` or `prerelease`). |
+| `python main.py query <TERM>` | Searches the indexed API. |
+| `python main.py mcp` | Starts the MCP server (stdio by default). |
+| `python main.py lang list` | Lists available languages. |
+| `python main.py lang set <CODE>` | Sets the CLI language. |
+| `python main.py config set <KEY> <VALUE>` | Sets a configuration value (e.g., `game_path`). |
 
-For **detailed CLI documentation** (arguments, flows, code structure, and description of each subcommand), see [CLI documentation](src/prism/entrypoints/cli/README.md).
+For **detailed CLI documentation** (all arguments, subcommands, and flows), see the [**CLI Documentation**](src/prism/entrypoints/cli/README.md).
 
 ## Project structure
 

@@ -1,18 +1,19 @@
-# API extractor from decompiled Java code (regex). Feeds SQLite + FTS5.
+# src/prism/infrastructure/extractor.py
+#? API extractor from decompiled Java code (regex). Feeds SQLite + FTS5.
 
 import re
 import sys
 from pathlib import Path
 
-from tqdm import tqdm
+from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn, TimeElapsedColumn
 
 from . import config_impl
 from . import db
 
-# Files processed between each commit to reduce transaction size and memory
+#_ Files processed between each commit to reduce transaction size and memory
 BATCH_COMMIT_FILES = 1000
 
-# Same regex as Server/Scripts/generate_api_context.py (but improved)
+#_ Same regex as Server/Scripts/generate_api_context.py (but improved)
 RE_PACKAGE = re.compile(r"package\s+([\w\.]+);")
 RE_CLASS = re.compile(
     r"public\s+(?:abstract\s+|final\s+)?(class|interface|record|enum)\s+(\w+)"
@@ -30,7 +31,7 @@ RE_CONSTANT = re.compile(
 
 def _extract_from_java(content: str, file_path: str) -> list[tuple[str, str, str, list[dict], str | None, str | None, list[dict]]]:
     """
-    Extract from a Java file: package, class_name, kind, methods, parent, interfaces, and constants.
+    Extracts from a Java file: package, class_name, kind, methods, parent, interfaces, and constants.
     Uses bracket tracking to correctly attribute items to inner/multiple classes.
     """
     pkg_match = RE_PACKAGE.search(content)
@@ -50,17 +51,17 @@ def _extract_from_java(content: str, file_path: str) -> list[tuple[str, str, str
         parent = class_match.group(3).strip() if class_match.group(3) else None
         interfaces = class_match.group(4).strip() if class_match.group(4) else None
         
-        # Clean generics from parent/interfaces for better indexing/linking
+        #_ Clean generics from parent/interfaces for better indexing/linking
         if parent: parent = re.sub(r"\<.*?\>", "", parent).strip()
         if interfaces: interfaces = re.sub(r"\<.*?\>", "", interfaces).strip()
 
         start_search = class_match.end()
         
-        # Find first '{' (which is actually part of the RE_CLASS match, but let's be careful)
-        # Actually RE_CLASS ends at '{', so start_search is right after the '{'
-        first_brace = class_match.end() - 1 # Position of '{'
+        #_ Find the first '{' (which is actually part of the RE_CLASS match, but let's be careful)
+        #_ Actually RE_CLASS ends at '{', so start_search is right after '{'
+        first_brace = class_match.end() - 1 #_ Position of '{'
         
-        # Track braces to find closing '}'
+        #_ Track braces to find the closing '}'
         depth = 1
         end_search = -1
         for i in range(first_brace + 1, len(content)):
@@ -73,15 +74,15 @@ def _extract_from_java(content: str, file_path: str) -> list[tuple[str, str, str
         
         if end_search == -1: end_search = len(content)
         
-        # Extract items only within [first_brace, end_search]
+        #_ Extract items only within [first_brace, end_search]
         class_content = content[first_brace:end_search]
         
-        # Methods
+        #_ Methods
         methods = []
         for m in RE_METHOD.finditer(class_content):
-            # RE_METHOD groups: 1:@Annotation, 2:Returns, 3:Name, 4:Params
+            #_ RE_METHOD groups: 1:@Annotation, 2:Returns, 3:Name, 4:Params
             m_name = m.group(3)
-            if m_name == name: continue # Constructor
+            if m_name == name: continue #_ Constructor
             
             methods.append({
                 "method": m_name,
@@ -91,10 +92,10 @@ def _extract_from_java(content: str, file_path: str) -> list[tuple[str, str, str
                 "annotation": m.group(1).strip() if m.group(1) else None,
             })
         
-        # Constants
+        #_ Constants
         constants = []
         for c in RE_CONSTANT.finditer(class_content):
-            # RE_CONSTANT groups: 1:Type, 2:Name, 3:Value
+            #_ RE_CONSTANT groups: 1:Type, 2:Name, 3:Value
             constants.append({
                 "name": c.group(2),
                 "type": c.group(1),
@@ -108,8 +109,8 @@ def _extract_from_java(content: str, file_path: str) -> list[tuple[str, str, str
 
 def run_index(root: Path | None = None, version: str = "release") -> tuple[bool, str | tuple[int, int, int]]:
     """
-    Walk workspace/decompiled/<version>, extract classes, methods and constants with regex,
-    and fill prism_api_<version>.db. Returns (True, (num_classes, num_methods, num_constants));
+    Walks through workspace/decompiled/<version>, extracts classes, methods and constants with regex,
+    and fills prism_api_<version>.db. Returns (True, (num_classes, num_methods, num_constants));
     (False, "no_decompiled") if no code; (False, "db_error") if DB fails.
     """
     root = root or config_impl.get_project_root()
@@ -122,28 +123,39 @@ def run_index(root: Path | None = None, version: str = "release") -> tuple[bool,
 
     db_path = config_impl.get_db_path(root, version)
     try:
-        with db.connection(db_path) as conn:
+        with db.connection(db_path) as conn, Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            BarColumn(),
+            TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+            TimeElapsedColumn(),
+            transient=True,
+        ) as progress:
             db.init_schema(conn)
             db.clear_tables(conn)
             files_processed = 0
-            for jpath in tqdm(java_files, unit=" files", desc="Indexing", file=sys.stderr, colour="green"):
+            
+            task = progress.add_task(f"[green]Indexing {version}", total=len(java_files))
+
+            for jpath in java_files:
                 try:
                     content = jpath.read_text(encoding="utf-8", errors="replace")
                 except OSError:
+                    progress.update(task, advance=1)
                     continue
-                # Relative path to decompiled directory for storage
+                #_ Relative path to the decompiled directory for storage
                 try:
                     rel_path = jpath.relative_to(decompiled_dir)
                 except ValueError:
                     rel_path = jpath
                 file_path_str = str(rel_path).replace("\\", "/")
                 
-                # Extract and insert
+                #_ Extract and insert
                 results = _extract_from_java(content, file_path_str)
                 for pkg, class_name, kind, methods, parent, interfaces, constants in results:
                     class_id = db.insert_class(conn, pkg, class_name, kind, file_path_str, parent, interfaces)
                     
-                    # Insert methods
+                    #_ Insert methods
                     for m in methods:
                         db.insert_method(
                             conn,
@@ -164,7 +176,7 @@ def run_index(root: Path | None = None, version: str = "release") -> tuple[bool,
                             params=m["params"],
                         )
                     
-                    # Insert constants
+                    #_ Insert constants
                     for c in constants:
                         db.insert_constant(
                             conn,
@@ -185,10 +197,13 @@ def run_index(root: Path | None = None, version: str = "release") -> tuple[bool,
                 files_processed += 1
                 if files_processed % BATCH_COMMIT_FILES == 0:
                     conn.commit()
+                
+                progress.update(task, advance=1)
+
             conn.commit()
             stats = db.get_stats(conn)
         return (True, stats)
     except Exception as e:
         import traceback
-        traceback.print_exc() # Log to stderr for the agent/user to see
+        traceback.print_exc() #_ Log to stderr for the agent/user to see
         return (False, "db_error")
