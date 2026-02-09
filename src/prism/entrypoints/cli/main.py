@@ -29,8 +29,7 @@ app = typer.Typer(
 def main_callback(
     ctx: typer.Context,
 ):  
-    """Displays the logo at startup and sets the project root context."""
-    branding.print_logo()
+    """Sets the project root context."""
     ctx.ensure_object(dict)
     ctx.obj["root"] = config_impl.get_project_root()
 
@@ -46,6 +45,7 @@ app.add_typer(config.app, name="config", help=i18n.t("cli.config.help")) # We re
 
 def main() -> int:
     """CLI entry point."""
+    branding.print_logo()
     #_ Typer handles colorama initialization and argument management
     app()
     return 0
