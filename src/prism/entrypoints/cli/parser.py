@@ -34,7 +34,7 @@ def create_parser():
         'version',
         nargs='?',
         default=None,
-        choices=VALID_SERVER_VERSIONS + ['all'], # Allow 'all' for versions
+        choices=VALID_SERVER_VERSIONS + ('all',), # Allow 'all' for versions
         help='Specific version to process (release, prerelease), or "all".'
     )
     init_parser.add_argument(
@@ -75,7 +75,7 @@ def create_parser():
         'version',
         nargs='?',
         default=None,
-        choices=VALID_SERVER_VERSIONS + ['all'],
+        choices=VALID_SERVER_VERSIONS + ('all',),
         help='Specific version to decompile (release, prerelease), or "all".'
     )
     decompile_parser.add_argument(
@@ -93,7 +93,7 @@ def create_parser():
         'version',
         nargs='?',
         default=None,
-        choices=VALID_SERVER_VERSIONS + ['all'],
+        choices=VALID_SERVER_VERSIONS + ('all',),
         help='Specific version to prune (release, prerelease), or "all".'
     )
 
