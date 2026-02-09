@@ -3,7 +3,7 @@
 import sys
 from pathlib import Path
 
-import colorama
+# import colorama #!ELIMINAR
 
 from ... import i18n
 from ...infrastructure import config_impl
@@ -17,10 +17,14 @@ from . import mcp_cmd
 
 
 from .parser import create_parser # NEW IMPORT
+from . import branding #!NUEVA_IMPORTACION
 
 def main() -> int:
     """CLI entry point."""
-    colorama.init()
+    # colorama.init() #!ELIMINAR
+
+    #_ Muestra el logo al inicio
+    branding.print_logo() #!NUEVA_LLAMADA_FUNCION
 
     parser = create_parser()
     args = parser.parse_args(sys.argv[1:])

@@ -103,28 +103,35 @@ def cmd_context_init(root: Path | None = None, version: str | None = None, singl
         return 1
 
     out.phase(i18n.t("cli.build.phase_decompile"))
-    print(i18n.t("cli.decompile.may_take"))
-    success, err = decompile.run_decompile_only(root, versions=versions_list, single_thread_mode=single_thread_mode)
+    out.phase(i18n.t("cli.decompile.may_take"))
+    
+    with out.status(i18n.t("cli.build.phase_decompile")):
+        success, err = decompile.run_decompile_only(root, versions=versions_list, single_thread_mode=single_thread_mode)
+    
     if not success:
         out.error(i18n.t("cli.build.decompile_failed"))
         out.error(i18n.t(f"cli.decompile.{err}"))
         return 1
     out.phase(i18n.t("cli.build.phase_decompile_done"))
 
-    success, err = prune.run_prune_only(root, versions=versions_list)
+    with out.status(i18n.t("cli.prune.pruning")):
+        success, err = prune.run_prune_only(root, versions=versions_list)
+
     if not success:
         out.error(i18n.t("cli.prune." + err))
         return 1
+    out.phase(i18n.t("cli.prune.completed_all"))
+
 
     out.phase(i18n.t("cli.build.phase_index"))
     for v in versions_list:
-        out.phase(i18n.t("cli.build.indexing_version", version=v))
-        ok, payload = extractor.run_index(root, v)
+        with out.status(i18n.t("cli.build.indexing_version", version=v)):
+            ok, payload = extractor.run_index(root, v)
         if ok:
             classes, methods, constants = payload
             out.success(i18n.t("cli.build.indexed", version=v, classes=classes, methods=methods, constants=constants))
         elif payload == "no_decompiled":
-            print(i18n.t("cli.build.skipped_no_code", version=v))
+            out.phase(i18n.t("cli.build.skipped_no_code", version=v))
         else:
             out.error(i18n.t("cli.index.db_error"))
             return 1
@@ -136,17 +143,21 @@ def cmd_context_clean(root: Path | None = None, target: str = "") -> int:
     """Cleans based on target: db | build | b | all."""
     root = root or config_impl.get_project_root()
     t = (target or "").strip().lower()
+
     if t == "db":
-        workspace_cleanup.clean_db(root)
+        with out.status(i18n.t("cli.context.clean.cleaning_db")):
+            workspace_cleanup.clean_db(root)
         out.success(i18n.t("cli.context.clean.db_done"))
         return 0
     if t in ("build", "b"):
-        workspace_cleanup.clean_build(root)
+        with out.status(i18n.t("cli.context.clean.cleaning_build")):
+            workspace_cleanup.clean_build(root)
         out.success(i18n.t("cli.context.clean.build_done"))
         return 0
     if t == "all":
-        workspace_cleanup.clean_db(root)
-        workspace_cleanup.clean_build(root)
+        with out.status(i18n.t("cli.context.clean.cleaning_all")):
+            workspace_cleanup.clean_db(root)
+            workspace_cleanup.clean_build(root)
         out.success(i18n.t("cli.context.clean.all_done"))
         return 0
     out.error(i18n.t("cli.context.clean.usage"))
@@ -156,7 +167,8 @@ def cmd_context_clean(root: Path | None = None, target: str = "") -> int:
 def cmd_context_reset(root: Path | None = None) -> int:
     """Resets the project to zero: clean db + build and removes .prism.json."""
     root = root or config_impl.get_project_root()
-    workspace_cleanup.reset_workspace(root)
+    with out.status(i18n.t("cli.context.reset.reseting")):
+        workspace_cleanup.reset_workspace(root)
     out.success(i18n.t("cli.context.reset.done"))
     return 0
 
@@ -168,8 +180,10 @@ def cmd_context_decompile(root: Path | None = None, version: str | None = None, 
     if version == "all":
         versions = _resolve_context_versions(root, None) # Get all versions if 'all' is specified
 
-    print(i18n.t("cli.decompile.may_take"))
-    success, err = decompile.run_decompile_only(root, versions=versions, single_thread_mode=single_thread_mode)
+    out.phase(i18n.t("cli.decompile.may_take"))
+    with out.status(i18n.t("cli.decompile.decompiling")):
+        success, err = decompile.run_decompile_only(root, versions=versions, single_thread_mode=single_thread_mode)
+
     if success:
         out.success(i18n.t("cli.decompile.success"))
         return 0
@@ -183,8 +197,10 @@ def cmd_prune(root: Path | None = None, version: str | None = None) -> int:
     versions = None if version is None else [version]
     if version == "all":
         versions = _resolve_context_versions(root, None) # Get all versions if 'all' is specified
+    
+    with out.status(i18n.t("cli.prune.pruning")):
+        success, err = prune.run_prune_only(root, versions=versions)
 
-    success, err = prune.run_prune_only(root, versions=versions)
     if success:
         if version:
             out.success(i18n.t("cli.prune.success", version=version))
@@ -201,40 +217,46 @@ def cmd_index(root: Path | None = None, version: str | None = None) -> int:
     if version is not None and version not in VALID_SERVER_VERSIONS:
         out.error(i18n.t("cli.context.use.invalid"))
         return 1
-    if version is None:
-        for v in VALID_SERVER_VERSIONS:
-            ok, payload = extractor.run_index(root, v)
-            if ok:
-                classes, methods, constants = payload
-                out.success(i18n.t("cli.index.success", classes=classes, methods=methods, constants=constants, version=v))
-            elif payload != "no_decompiled":
-                out.error(i18n.t("cli.index.db_error"))
-                return 1
-        return 0
-    success, payload = extractor.run_index(root, version)
-    if success:
-        classes, methods, constants = payload
-        out.success(i18n.t("cli.index.success", classes=classes, methods=methods, constants=constants, version=version))
-        return 0
-    out.error(i18n.t(f"cli.index.{payload}"))
-    return 1
+    
+    versions_to_index = [version] if version else VALID_SERVER_VERSIONS
 
+    for v in versions_to_index:
+        with out.status(i18n.t("cli.build.indexing_version", version=v)):
+            ok, payload = extractor.run_index(root, v)
+        if ok:
+            classes, methods, constants = payload
+            out.success(i18n.t("cli.index.success", classes=classes, methods=methods, constants=constants, version=v))
+        elif payload != "no_decompiled":
+            out.error(i18n.t("cli.index.db_error"))
+            return 1
+    return 0
 
 def cmd_context_list(root: Path | None = None) -> int:
     """Lists indexed versions and shows which one is active."""
     root = root or config_impl.get_project_root()
     provider = file_config.FileConfigProvider()
-    ctx = get_context_list(provider, root)
+    
+    with out.status(i18n.t("cli.context.list.loading")):
+        ctx = get_context_list(provider, root)
+
     installed = ctx["indexed"]
     active = ctx["active"]
-    print(i18n.t("cli.context.list.title"))
+    
     if not installed:
-        print(i18n.t("cli.context.list.none"))
+        out.phase(i18n.t("cli.context.list.none"))
         return 0
+
+    table_data = []
     for v in VALID_SERVER_VERSIONS:
         if v in installed:
-            prefix = "  * " if v == active else "    "
-            print(prefix + v)
+            is_active = "✔" if v == active else ""
+            table_data.append({"version": v, "active": is_active})
+
+    out.table(
+        title=i18n.t("cli.context.list.title"),
+        data=table_data,
+        columns=["version", "active"]
+    )
     return 0
 
 
