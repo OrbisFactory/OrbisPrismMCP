@@ -3,16 +3,17 @@
 
 import json
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Annotated
 from enum import Enum
 
 import typer
-from typing_extensions import Annotated
 
 from ...application import search
 from ... import i18n
 from ...domain.constants import VALID_SERVER_VERSIONS
 from ...infrastructure import config_impl
+from ...infrastructure.file_config import FileConfigProvider
+from ...infrastructure.sqlite_repository import SqliteIndexRepository
 from . import out
 
 #_ Create a dynamic Enum for the server versions for Typer's choice validation
@@ -20,10 +21,10 @@ VersionEnum = Enum("VersionEnum", {v: v for v in VALID_SERVER_VERSIONS})
 
 def query_callback(
     ctx: typer.Context,
-    term: Annotated[str, typer.Argument(help=i18n.t("cli.query.term_help"), rich_help_panel="Arguments")],
-    version: Annotated[VersionEnum, typer.Option("--version", "-v", help=i18n.t("cli.query.version_help"), rich_help_panel="Search Options")] = VersionEnum.release,
-    json_output: Annotated[bool, typer.Option("--json", "-j", help=i18n.t("cli.query.json_help"), rich_help_panel="Output Options")] = False,
-    limit: Annotated[int, typer.Option("--limit", "-n", help=i18n.t("cli.query.limit_help"), rich_help_panel="Search Options")] = 30,
+    term: Annotated[str, typer.Argument(help=i18n.t("cli.query.term_help"))],
+    version: Annotated[VersionEnum, typer.Option("--version", "-v", help=i18n.t("cli.query.version_help"))] = VersionEnum.release,
+    json_output: Annotated[bool, typer.Option("--json", "-j", help=i18n.t("cli.query.json_help"))] = False,
+    limit: Annotated[int, typer.Option("--limit", "-n", help=i18n.t("cli.query.limit_help"))] = 30,
 ) -> int:
     """
     Executes an FTS5 search in the DB for the given version.
@@ -35,8 +36,19 @@ def query_callback(
         out.error(i18n.t("cli.query.usage"))
         raise typer.Exit(code=1)
     
+    config_provider = FileConfigProvider()
+    index_repository = SqliteIndexRepository()
+    
     with out.status(i18n.t("cli.query.searching", term=term, version=version_str)):
-        results, err = search.search_api(root, version_str, term.strip(), limit=limit)
+        results, err = search.search_api(
+            config_provider, 
+            index_repository, 
+            root, 
+            version_str, 
+            term.strip(), 
+            limit=limit,
+            t=i18n.t
+        )
 
     if err is not None:
         out.error(err["message"])
