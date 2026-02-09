@@ -8,12 +8,12 @@ from typing import Optional
 import typer
 from typing_extensions import Annotated
 
-from ... import i1_n
+from ... import i18n
 from ...infrastructure import config_impl
 from . import out
 
 #_ Create a Typer sub-application for the 'mcp' command
-app = typer.Typer(help=i1_n.t("cli.mcp.help"))
+app = typer.Typer(help=i18n.t("cli.mcp.help"))
 
 @app.command(name="start")
 def mcp_cmd(
@@ -28,29 +28,29 @@ def mcp_cmd(
 
     if sys.stderr.isatty(): #_ We only show instructions if we are in a TTY
         if transport == "sse":
-            out.phase(i1_n.t("cli.mcp.instructions_http_title"))
-            out.phase(i1_n.t("cli.mcp.instructions_http_ready", host=host, port=port))
-            out.phase(i1_n.t("cli.mcp.instructions_http_url", url=f"http://{host}:{port}/sse"))
+            out.phase(i18n.t("cli.mcp.instructions_http_title"))
+            out.phase(i18n.t("cli.mcp.instructions_http_ready", host=host, port=port))
+            out.phase(i18n.t("cli.mcp.instructions_http_url", url=f"http://{host}:{port}/sse"))
         else:
             cwd = str(root.resolve())
             command = sys.executable
             args_str = "main.py mcp"
-            out.phase(i1_n.t("cli.mcp.instructions_title"))
-            out.phase(i1_n.t("cli.mcp.instructions_intro"))
-            out.phase(i1_n.t("cli.mcp.instructions_command", command=command))
-            out.phase(i1_n.t("cli.mcp.instructions_args", args=args_str))
-            out.phase(i1_n.t("cli.mcp.instructions_cwd", cwd=cwd))
-            out.phase(i1_n.t("cli.mcp.instructions_ready"))
+            out.phase(i18n.t("cli.mcp.instructions_title"))
+            out.phase(i18n.t("cli.mcp.instructions_intro"))
+            out.phase(i18n.t("cli.mcp.instructions_command", command=command))
+            out.phase(i18n.t("cli.mcp.instructions_args", args=args_str))
+            out.phase(i18n.t("cli.mcp.instructions_cwd", cwd=cwd))
+            out.phase(i18n.t("cli.mcp.instructions_ready"))
 
     from .. import mcp_server
     try:
         mcp_server.run(transport=transport, host=host, port=port)
         return 0
     except KeyboardInterrupt:
-        out.success(i1_n.t("cli.mcp.server_stopped"))
+        out.success(i18n.t("cli.mcp.server_stopped"))
         return 0
     except Exception as e:
-        out.error(i1_n.t("cli.mcp.error", msg=str(e)))
+        out.error(i18n.t("cli.mcp.error", msg=str(e)))
         return 1
 
 # The run_mcp function is removed because Typer handles dispatching.
