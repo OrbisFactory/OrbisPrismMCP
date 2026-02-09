@@ -1,58 +1,63 @@
-# Guía para agentes: Orbis Prism
+# Agent Guide: Orbis Prism
 
-Consulta siempre este archivo cuando trabajes en este repositorio para tener contexto del proyecto. Para contribuir (estándares, PRs, pruebas), ver [CONTRIBUTING.md](CONTRIBUTING.md). Visión general del proyecto: [README.md](README.md).
-
----
-
-## Qué es Orbis Prism
-
-Herramienta de ingeniería para el modding de **Hytale**. Toma el servidor oficial (`HytaleServer.jar`), lo descompila con JADX, deja solo el núcleo `com.hypixel.hytale`, indexa clases y métodos en SQLite con FTS5 y expone esa API vía **CLI** y **servidor MCP** para que agentes (Cursor, Claude, etc.) consulten la API sin “alucinar”.
-
-- **Carpeta del proyecto:** `orbis-prism/` (dentro del workspace `01 ServerContext`).
-- **Entrada:** `python main.py` desde `orbis-prism/` o desde la raíz del workspace (el `main.py` de la raíz delega a orbis-prism).
-- **Stack:** Python 3.11+, JADX, SQLite (FTS5), dependencia principal `mcp>=1.0.0`.
+Always consult this file when working in this repository to get project context. For contributing guidelines (standards, PRs, testing), see [CONTRIBUTING.md](CONTRIBUTING.md). For a project overview, see [README.md](README.md).
 
 ---
 
-## Estructura del código (`orbis-prism/src/prism/`)
+## What is Orbis Prism
 
-Arquitectura por capas (hexagonal):
+An engineering tool for **Hytale** modding. It takes the official server (`HytaleServer.jar`), decompiles it with JADX, isolates the `com.hypixel.hytale` core, indexes classes and methods into an SQLite database with FTS5, and exposes that API via a **CLI** and an **MCP server** for agents (like Cursor, Claude, etc.) to query the API without "hallucinating."
 
-| Capa | Ubicación | Rol |
-|------|-----------|-----|
-| **Domain** | `domain/` | Tipos y constantes: `ServerVersion`, `VALID_SERVER_VERSIONS`, `normalize_version()` en `constants.py`; `types.py` con tipos compartidos. |
-| **Ports** | `ports/` | Interfaces (Protocol): `ConfigProvider` (raíz, DB path, decompiled dir, load/save config) e `IndexRepository` (search, get_class, get_method, list_classes, get_stats). |
-| **Application** | `application/` | Casos de uso: `search_api` en `search.py`; `get_class`, `get_method`, `list_classes`, `get_index_stats`, `get_context_list` en `index_queries.py`; `read_source` en `read_source.py`; `get_hierarchy` en `hierarchy.py`; `find_usages` en `usages.py`. Reciben los ports por inyección. |
-| **Infrastructure** | `infrastructure/` | Implementaciones: `config_impl` (paths, .prism.json, env), `db` (schema SQLite + FTS5), `file_config` (ConfigProvider), `sqlite_repository` (IndexRepository), `detection` (JAR/JADX), `decompile` (JADX; `run_decompile_only` sin prune), `prune`, `extractor` (regex sobre Java → DB), `workspace_cleanup` (clean_db, clean_build, reset_workspace). |
-| **Entrypoints** | `entrypoints/` | Paquete `cli/` (comandos: `query`, `mcp`, `context`/`ctx` con **init**, detect, clean, reset, decompile, prune, db, list, use; `lang`, `config`). `mcp_server.py`: herramientas MCP (`prism_search`, `prism_get_class`, `prism_list_classes`, `prism_context_list`, `prism_index_stats`, `prism_read_source`, `prism_get_method`, `prism_get_hierarchy`, `prism_find_usages`, `prism_fts_help`). |
-
-**Fuera de capas:** `i18n.py` (traducciones es/en desde `locales/*.json`).
+- **Project Folder:** `orbis-prism/`
+- **Entry Point:** `python main.py` from the `orbis-prism/` root.
+- **Stack:** Python 3.11+, JADX, SQLite (FTS5), main dependency `mcp>=1.0.0`.
 
 ---
 
-## Flujos principales
+## Code Structure (`orbis-prism/src/prism/`)
 
-1. **Comando inicial: ctx init.** El usuario ejecuta `python main.py ctx init` (o `context init`). Si el JAR no está configurado, antes debe ejecutar `ctx detect` para que `detection` encuentre `HytaleServer.jar` (env, config, %APPDATA%\Hytale), guarde `.prism.json` y cree `workspace/`, etc. No existe comando top-level `init`.
-2. **Context init (pipeline completo):** `context init` ejecuta: decompile (solo JADX) → prune → db. JADX escribe en `workspace/decompiled_raw/<version>`; `prune` copia solo `com/hypixel/hytale` a `workspace/decompiled/<version>`; `extractor` indexa en `workspace/db/prism_api_<version>.db`.
-3. **Pasos sueltos:** `context decompile` (solo JADX), `context prune`, `context db` (indexar). `context clean` (db | build | all) y `context reset` (dejar proyecto a cero).
-4. **Query / MCP:** La aplicación usa `ConfigProvider` y `IndexRepository`; el CLI y el MCP instancian `FileConfigProvider` y `SqliteIndexRepository` y llaman a los casos de uso (`search_api`, `get_class`, etc.).
+The project follows a hexagonal (ports and adapters) architecture:
 
----
+| Layer          | Location           | Role |
+|----------------|--------------------|------|
+| **Domain**     | `domain/`          | Core types and constants: `ServerVersion`, `VALID_SERVER_VERSIONS`, `normalize_version()` in `constants.py`; `types.py` with shared types. |
+| **Ports**      | `ports/`           | Interfaces (Protocols): `ConfigProvider` (project root, DB path, decompiled dir, load/save config) and `IndexRepository` (search, get_class, get_method, etc.). |
+| **Application**| `application/`     | Use cases: `search_api` in `search.py`; `get_class`, `get_method`, `get_index_stats` in `index_queries.py`; `read_source`, `get_hierarchy`, `find_usages`. They receive ports via dependency injection. |
+| **Infrastructure**| `infrastructure/`| Implementations: `config_impl` (paths, .prism.json, env), `db` (SQLite schema + FTS5), `file_config` (ConfigProvider), `sqlite_repository` (IndexRepository), `detection`, `decompile`, `prune`, `extractor` (Java regex → DB), `workspace_cleanup`. |
+| **Entrypoints**| `entrypoints/`     | The `cli/` package contains the Typer-based command structure. `main.py` initializes the main app and adds sub-apps from `context.py`, `query.py`, etc. `mcp_server.py` defines the MCP tools. |
 
-## Puntos que un agente debe tener en cuenta
-
-- **Config:** Rutas y configuración en `infrastructure/config_impl.py`. Constantes: `CONFIG_KEY_JAR_PATH`, `CONFIG_KEY_ACTIVE_SERVER`, `ENV_WORKSPACE`, `CONFIG_FILENAME` (`.prism.json`), etc. El CLI usa `config_impl.get_project_root()`, `config_impl.load_config()`, etc.
-- **Versiones:** Solo dos: `"release"` y `"prerelease"`. Usar `domain.constants.normalize_version()` y `VALID_SERVER_VERSIONS` para no duplicar lógica.
-- **Búsqueda:** Caso de uso `application.search.search_api`; recibe `ConfigProvider`, `IndexRepository`, root, version, query, limit, etc.
-- **Context list:** Listado de versiones indexadas y activa viene de `application.index_queries.get_context_list(config_provider, root)`; el CLI no debe duplicar esa lógica.
-- **Raíz del proyecto:** Puede venir de `PRISM_WORKSPACE` o inferirse (buscando `main.py` hacia arriba). Los entrypoints y la infra dependen de esa raíz para `.prism.json` y `workspace/`.
-- **Idioma:** Código, comentarios y mensajes de commit en **inglés**. Mensajes al usuario vía i18n en `locales/es.json` y `locales/en.json`. Para estándares de contribución, ver [CONTRIBUTING.md](CONTRIBUTING.md).
+**Cross-cutting:** `i18n.py` (translations from `locales/*.json`).
 
 ---
 
-## Cómo ejecutar
+## Main Workflows
 
-- Desde **orbis-prism:** El comando inicial es **`python main.py ctx init`** (pipeline completo; si falta el JAR, ejecutar antes `python main.py ctx detect`). Luego: `python main.py ctx list`, `python main.py ctx clean db`, `python main.py query <término>`, `python main.py mcp`, etc.
-- Desde **raíz del workspace:** `python main.py -h` (el `main.py` de la raíz delega a orbis-prism).
+1.  **Initial Command: `context init`**. The user runs `python main.py context init`. If the JAR is not configured, they must first run `python main.py context detect` so that `detection` can find `HytaleServer.jar`, save `.prism.json`, and create the `workspace/` directory.
+2.  **`context init` (Full Pipeline):** This command executes: decompile → prune → db. JADX writes to `workspace/decompiled_raw/<version>`; `prune` copies only `com/hypixel/hytale` to `workspace/decompiled/<version>`; `extractor` indexes the code into `workspace/db/prism_api_<version>.db`.
+3.  **Individual Steps:** The user can also run steps individually: `context decompile`, `context prune`, `context db`. Workspace management commands like `context clean` and `context reset` are also available.
+4.  **Query / MCP:** The CLI and MCP server instantiate `FileConfigProvider` and `SqliteIndexRepository` and inject them into the application use cases (`search_api`, `get_class`, etc.).
 
-Si vas a tocar CLI, MCP o configuración, conviene leer en este orden: `entrypoints/cli/main.py`, `entrypoints/cli/context.py`, `entrypoints/mcp_server.py`, `infrastructure/config_impl.py`.
+---
+
+## Key Points for Agents
+
+- **Config:** Paths and settings are managed in `infrastructure/config_impl.py`. Key constants include `CONFIG_KEY_JAR_PATH`, `CONFIG_KEY_ACTIVE_SERVER`, `ENV_WORKSPACE`, `CONFIG_FILENAME` (`.prism.json`).
+- **Versions:** The only two valid versions are `"release"` and `"prerelease"`. Always use `domain.constants.normalize_version()` and `VALID_SERVER_VERSIONS` to avoid duplicating logic.
+- **Search:** The primary search use case is `application.search.search_api`.
+- **Context List:** The list of indexed and active versions comes from `application.index_queries.get_context_list(config_provider, root)`. The CLI should not duplicate this logic.
+- **Project Root:** The root is determined by `PRISM_WORKSPACE` env var or by searching upwards for a directory containing `main.py`. Entrypoints and infrastructure depend on this root to find `.prism.json` and `workspace/`.
+- **Language:** All code, comments, and commit messages must be in **English**. User-facing messages are handled by `i18n` from `locales/es.json` and `locales/en.json`. See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution standards.
+
+---
+
+## How to Run
+
+The initial command is **`python main.py context init`**. If the JAR is missing, run **`python main.py context detect`** first.
+
+Other common commands:
+- `python main.py context list`
+- `python main.py context clean db`
+- `python main.py query search "SomeClass"`
+- `python main.py mcp start`
+
+If you are modifying the CLI, MCP, or configuration, it is recommended to read the files in this order: `entrypoints/cli/main.py`, `entrypoints/cli/context.py`, `entrypoints/mcp_server.py`, `infrastructure/config_impl.py`.

@@ -1,137 +1,109 @@
-# Documentación del CLI — Orbis Prism
+# CLI Documentation — Orbis Prism
 
-Este directorio implementa la línea de comandos de Orbis Prism. La entrada es `python main.py <comando> [argumentos]` desde la raíz del proyecto (`orbis-prism/`).
+This directory implements the command-line interface for Orbis Prism. The entry point is `python main.py <command> [subcommand] [arguments]` from the project root (`orbis-prism/`).
 
-## Estructura del paquete
+## Package Structure (Typer-based)
 
-| Archivo      | Responsabilidad |
-|-------------|------------------|
-| `main.py`   | Punto de entrada: parsea el primer argumento y delega en el módulo correspondiente. |
-| `args.py`   | Constantes de flags y parsers compartidos: versión (`--all`, `-a`), query (`--json`, `--limit`), MCP (`--http`, `--port`, `--host`). |
-| `help.py`   | Texto de ayuda (`print_help()`), mostrado con `-h` / `--help` o cuando falta un subcomando. |
-| `context.py`| Comandos **context** / **ctx**: detect, init, clean, reset, decompile, prune, db, list, use. Contiene la lógica de detección de JAR, pipeline de descompilación e índice. |
-| `query.py`  | Comando **query**: búsqueda FTS5 en la base de datos indexada. |
-| `mcp_cmd.py`| Comando **mcp**: arranca el servidor MCP (stdio o HTTP). |
-| `lang.py`   | Comandos **lang list** y **lang set**: idioma de la interfaz. |
-| `config_cmd.py` | Comando **config_impl set game_path**: establece la ruta del JAR o de la carpeta raíz de Hytale. |
+The CLI is built with **Typer**, which provides a clean, modern interface with automatic help generation and argument validation.
 
-No existe un comando top-level `init`; el flujo inicial es **`ctx init`** (o antes **`ctx detect`** si el JAR no se encuentra solo).
+| File          | Responsibility |
+|---------------|----------------|
+| `main.py`     | The main entry point. Initializes the Typer app and registers all sub-applications (subcommands). |
+| `branding.py` | Displays the ASCII art logo and version at startup. |
+| `out.py`      | Handles all CLI output using the **Rich** library, providing formatted tables, spinners, and colored text. |
+| `context.py`  | Implements the **context** / **ctx** subcommand app, which manages the workspace (detection, build pipeline, etc.). |
+| `query.py`    | Implements the **query** subcommand app for FTS5 searches. |
+| `mcp_cmd.py`  | Implements the **mcp** subcommand app to start the MCP server. |
+| `lang.py`     | Implements the **lang** subcommand app for managing the UI language. |
+| `config.py`   | Implements the **config** subcommand app for setting internal paths like `game_path`. |
 
----
-
-## Comando inicial: `context` / `ctx`
-
-Puedes escribir **`context`** o **`ctx`** (abreviatura). Todos los subcomandos que construyen y gestionan el “contexto” de la API viven aquí.
-
-### `ctx init [release|prerelease|--all|-a]`
-
-**Comando recomendado para la primera ejecución.** Ejecuta en orden:
-
-1. **Decompile** — Ejecuta JADX sobre `HytaleServer.jar` y escribe en `workspace/decompiled_raw/<version>` (solo JADX, sin poda).
-2. **Prune** — Copia únicamente el paquete `com.hypixel.hytale` de `decompiled_raw` a `workspace/decompiled/<version>`.
-3. **DB** — Indexa el código en SQLite (FTS5) en `workspace/db/prism_api_<version>.db`.
-
-- Sin argumento de versión: usa `release` por defecto.
-- `release` o `prerelease`: solo esa versión (si está configurado su JAR).
-- `--all` o `-a`: todas las versiones para las que haya JAR configurado.
-
-Si no hay JAR configurado, debes ejecutar antes **`ctx detect`** o **`config_impl set game_path <ruta>`**.
-
-### `ctx detect`
-
-Detecta `HytaleServer.jar` (entorno, `.prism.json`, o rutas por defecto en Windows), valida el archivo, crea los directorios del workspace y guarda la configuración en `.prism.json`. No descompila ni indexa. Úsalo cuando `ctx init` falle por “JAR no encontrado”.
-
-### `ctx clean <db|build|all>`
-
-Limpia artefactos generados:
-
-- **`db`** — Borra solo las bases SQLite (`prism_api_release.db`, `prism_api_prerelease.db`) en `workspace/db/`.
-- **`build`** o **`b`** — Borra `workspace/decompiled_raw/<version>` y `workspace/decompiled/<version>` para ambas versiones.
-- **`all`** — Ejecuta limpieza de `db` y de `build`.
-
-No modifica `.prism.json` ni las rutas del JAR guardadas.
-
-### `ctx reset`
-
-Deja el proyecto a cero: ejecuta una limpieza completa (db + build) y **elimina** `.prism.json`. Tras esto hay que volver a ejecutar `ctx detect` (o configurar `game_path`) y luego `ctx init`.
-
-### `ctx decompile [release|prerelease|--all|-a]`
-
-Solo ejecuta JADX y escribe en `workspace/decompiled_raw/<version>`. No ejecuta prune ni indexación. Útil para regenerar solo la salida cruda.
-
-### `ctx prune [release|prerelease|--all|-a]`
-
-Solo ejecuta la poda: copia `com.hypixel.hytale` de `decompiled_raw/<version>` a `decompiled/<version>`. Requiere que exista ya la salida de JADX.
-
-### `ctx db [release|prerelease|--all|-a]`
-
-Solo indexa el código existente en `workspace/decompiled/<version>` en la base SQLite (FTS5). No descompila ni poda.
-
-### `ctx list`
-
-Lista las versiones que tienen base de datos indexada (`release`, `prerelease`) e indica cuál está marcada como activa (*). La versión activa es la que usan por defecto **query** y el servidor MCP.
-
-### `ctx use <release|prerelease>`
-
-Establece la versión activa. Afecta a las búsquedas y al contexto por defecto del MCP.
+The initial workflow is **`python main.py context init`**. If the Hytale JAR is not found, you must first run **`python main.py context detect`**.
 
 ---
 
-## Búsqueda: `query`
+## `context` / `ctx` Commands
+
+This is the main group of commands for building and managing the API context. You can use **`context`** or its alias **`ctx`**.
+
+### `context init`
+
+**The recommended first command.** Runs the full pipeline in order:
+1. **Decompile** — Runs JADX on `HytaleServer.jar` and writes to `workspace/decompiled_raw/<version>`.
+2. **Prune** — Copies only the `com.hypixel.hytale` package from `decompiled_raw` to `workspace/decompiled/<version>`.
+3. **DB** — Indexes the code into an SQLite FTS5 database at `workspace/db/prism_api_<version>.db`.
+
+**Arguments:**
+- `[VERSION]`: Optional. The specific version to process (`release` or `prerelease`). If omitted, processes all configured versions.
+- `--single-thread` / `-st`: Use a single thread for decompilation to reduce CPU usage.
+
+### `context detect`
+
+Detects `HytaleServer.jar` (from environment variables, config, or default Windows paths), validates it, and saves the configuration to `.prism.json`. Use this if `init` fails with a "JAR not found" error.
+
+### `context clean`
+
+Cleans generated artifacts.
+
+**Argument:**
+- `TARGET`: The artifact to clean:
+  - `db`: Deletes the SQLite databases.
+  - `build`: Deletes the `decompiled_raw` and `decompiled` directories.
+  - `all`: Cleans both `db` and `build`.
+
+### `context reset`
+
+Resets the project to a clean state. It performs a full clean and **deletes `.prism.json`**. You will need to run `context detect` again after a reset.
+
+### Other `context` Commands
+
+- **`decompile [VERSION]`**: Runs only the JADX decompilation step.
+- **`prune [VERSION]`**: Runs only the pruning step.
+- **`db [VERSION]`**: Runs only the database indexing step.
+- **`list`**: Lists the indexed versions (`release`, `prerelease`) and indicates the active one.
+- **`use <VERSION>`**: Sets the active version, which is used by default for `query` and `mcp`.
+
+---
+
+## `query search` Command
 
 ```bash
-python main.py query [--json|-j] [--limit N] <término> [release|prerelease]
+python main.py query search <TERM> [--version <VERSION>] [--json] [--limit N]
 ```
 
-- **`<término>`** — Texto de búsqueda FTS5 (palabra, frase entre comillas, operadores como `AND`/`OR`).
-- **`[release|prerelease]`** — Versión sobre la que buscar; por defecto la activa (normalmente `release`).
-- **`--json` / `-j`** — Salida en JSON (útil para integración).
-- **`--limit N`** — Número máximo de resultados (por defecto 30, máximo 500).
+- **`<TERM>`**: The FTS5 search term (word, "quoted phrase", `AND`/`OR` operators).
+- **`--version`**: Version to search against (defaults to the active one).
+- **`--json` / `-j`**: Output results in JSON format.
+- **`--limit` / `-n`**: Max number of results (default: 30, max: 500).
 
-Ejemplo: `python main.py query "GameManager" release`
+Example: `python main.py query search "GameManager"`
 
 ---
 
-## Servidor MCP: `mcp`
+## `mcp start` Command
 
 ```bash
-python main.py mcp [--http] [--port N] [--host DIR]
+python main.py mcp start [--http] [--port N] [--host ADDR]
 ```
 
-- Por defecto usa **transporte stdio** (no abre puerto). El cliente (Cursor, Claude, etc.) ejecuta el proceso y se comunica por stdin/stdout.
-- **`--http`** — Usa transporte Streamable HTTP; el servidor escucha en `host:port` (por defecto `0.0.0.0:8000`).
-- **`--port N`** — Puerto (por defecto 8000).
-- **`--host DIR`** — Interfaz de escucha (por defecto `0.0.0.0`).
-
-Variables de entorno (el CLI las sobreescribe si se pasan argumentos): `MCP_TRANSPORT`, `MCP_PORT`, `MCP_HOST`.
+- By default, uses **stdio transport** (no port is opened).
+- **`--http` / `-H`**: Uses Streamable HTTP transport, listening on `host:port`.
+- **`--port` / `-p`**: Port for HTTP mode (default: 8000).
+- **`--host`**: Listening interface for HTTP mode (default: `0.0.0.0`).
 
 ---
 
-## Idioma: `lang`
+## `lang` Commands
 
-- **`lang list`** — Lista idiomas disponibles y marca el actual (guardado en `.prism.json`).
-- **`lang set <código>`** — Cambia el idioma (ej. `en`, `es`).
+- **`lang list`**: Lists available languages (`en`, `es`) and marks the current one.
+- **`lang set <CODE>`**: Sets the active language (e.g., `en`).
 
 ---
 
-## Configuración: `config_impl set game_path`
+## `config set` Command
 
 ```bash
-python main.py config_impl set game_path <ruta>
+python main.py config set <KEY> <VALUE>
 ```
 
-- **`<ruta>`** — Puede ser la **carpeta raíz del juego** (recomendado) o la ruta directa a un `HytaleServer.jar`. Si es la carpeta de Hytale, Orbis Prism detecta release y pre-release si existen y los guarda en `.prism.json`.
-
-Obtener la carpeta: Launcher de Hytale → Settings → Open Directory → copiar la ruta.
-
----
-
-## Raíz del proyecto
-
-El CLI determina la raíz del proyecto para buscar `.prism.json` y el directorio `workspace/` así:
-
-1. Si existe la variable de entorno **`PRISM_WORKSPACE`**, se usa como raíz.
-2. Si no, se busca hacia arriba un directorio que contenga `main.py` (desde la ubicación del código del CLI).
-3. Si no se encuentra, se usa el directorio de trabajo actual (`cwd`).
-
-Todos los comandos usan esa raíz para leer/escribir configuración y artefactos.
+- **`<KEY>`**: The configuration key to set. Currently supported: `game_path`, `jadx_path`.
+- **`<VALUE>`**: The path to set. For `game_path`, this can be the **Hytale root folder** (recommended) or the direct path to a `.jar` file.
