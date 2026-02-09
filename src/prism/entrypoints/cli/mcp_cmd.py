@@ -3,10 +3,9 @@
 
 import sys
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Annotated
 
 import typer
-from typing_extensions import Annotated
 
 from ... import i18n
 from ...infrastructure import config_impl
@@ -14,9 +13,9 @@ from . import out
 
 def mcp_callback(
     ctx: typer.Context,
-    http_mode: Annotated[bool, typer.Option("--http", "-H", help=i18n.t("cli.mcp.http_help"), rich_help_panel="Network Options")] = False,
-    port: Annotated[int, typer.Option("--port", "-p", help=i18n.t("cli.mcp.port_help"), rich_help_panel="Network Options")] = 8000,
-    host: Annotated[str, typer.Option("--host", help=i18n.t("cli.mcp.host_help"), rich_help_panel="Network Options")] = "0.0.0.0",
+    http_mode: Annotated[bool, typer.Option("--http", "-H", help=i18n.t("cli.mcp.http_help"))] = False,
+    port: Annotated[int, typer.Option("--port", "-p", help=i18n.t("cli.mcp.port_help"))] = 8000,
+    host: Annotated[str, typer.Option("--host", help=i18n.t("cli.mcp.host_help"))] = "127.0.0.1",
 ) -> int:
     """
     Starts the MCP server for AI.
@@ -25,7 +24,8 @@ def mcp_callback(
     root: Path = ctx.obj["root"]
     transport = "sse" if http_mode else "stdio"
 
-    if sys.stderr.isatty(): #_ We only show instructions if we are in a TTY
+    #_ We only show instructions if we are in a TTY to avoid polluting the protocol
+    if sys.stderr.isatty():
         if transport == "sse":
             out.phase(i18n.t("cli.mcp.instructions_http_title"))
             out.phase(i18n.t("cli.mcp.instructions_http_ready", host=host, port=port))

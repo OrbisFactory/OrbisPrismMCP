@@ -4,6 +4,10 @@
 
 > "Deconstruct the engine, illuminate the API."
 
+<img width="938" height="407" alt="image" src="https://github.com/user-attachments/assets/c316ebb4-74bf-43d6-9fcc-2c737133e2c0" />
+
+
+
 **Orbis Prism** is a set of tools designed for the Hytale modding ecosystem. It decomposes the official server (`HytaleServer.jar`), isolates its core logic, and provides an AI-assisted intelligent query interface (MCP) for developers.
 
 > **⚠️ Important notice**
