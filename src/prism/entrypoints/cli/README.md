@@ -8,7 +8,8 @@ This is the main group of commands for building and managing the API context.
 
 ### `context init [VERSION]`
 Runs the full build pipeline (detect, decompile, prune, db).
-- **Default Behavior**: Processes **all** configured versions (`release` and `prerelease`).
+- **Default Behavior**: Processes only the **release** version.
+- **`--all` / `-a`**: Processes all configured versions (`release` and `prerelease`).
 - `[VERSION]`: Can be `release`, `prerelease`, or `all`.
 
 ### `context decompile [VERSION]`

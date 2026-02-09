@@ -196,7 +196,7 @@ def get_logs_dir(root: Path | None = None) -> Path:
 
 
 def get_active_version(root: Path | None = None) -> str:
-    """Obtiene la versión activa de la configuración, o 'release' por defecto."""
+    """Gets the active version from the configuration, or 'release' by default."""
     cfg = load_config(root)
     active = cfg.get(CONFIG_KEY_ACTIVE_SERVER)
     if active in VALID_SERVER_VERSIONS:

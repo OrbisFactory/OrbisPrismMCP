@@ -72,7 +72,7 @@ def _cmd_init_logic(root: Path) -> int:
     return 0
 
 def _resolve_context_versions(root: Path, version: str | None, default_to_all: bool = True) -> list[str] | None:
-    """Determina la lista de versiones a usar; None si no hay JAR configurado."""
+    """Determines the list of versions to use; None if no JAR is configured."""
     if version is not None and version != "all":
         return [version]
     
@@ -101,8 +101,9 @@ def detect_cmd(
 @app.command(name="init", help=i18n.t("cli.help.context_init_desc"))
 def init_cmd(
     ctx: typer.Context,
-    version: Annotated[Optional[str], typer.Argument(help="Specific version to process (release, prerelease), or 'all'.")] = None,
-    single_thread: Annotated[bool, typer.Option("--single-thread", "-st", help="Decompile using a single thread to reduce CPU usage.", rich_help_panel="Decompilation Options")] = False,
+    version: Annotated[Optional[str], typer.Argument(help=i18n.t("cli.init.version_help"))] = None,
+    all_versions: Annotated[bool, typer.Option("--all", "-a", help=i18n.t("cli.init.all_help"))] = False,
+    single_thread: Annotated[bool, typer.Option("--single-thread", "-st", help=i18n.t("cli.init.st_help"), rich_help_panel="Decompilation Options")] = False,
 ) -> int:
     """Full pipeline: detects, decompiles, prunes, and indexes."""
     root: Path = ctx.obj["root"]
@@ -114,7 +115,14 @@ def init_cmd(
         out.error(i18n.t("cli.context.use.invalid"))
         return 1
 
-    versions_list = _resolve_context_versions(root, version, default_to_all=True)
+    if all_versions or version == "all":
+        versions_list = _resolve_context_versions(root, "all")
+    elif version:
+        versions_list = [version]
+    else:
+        #_ Default: only release
+        versions_list = ["release"]
+
     if not versions_list:
         out.error(i18n.t("cli.decompile.no_jar"))
         return 1
@@ -122,7 +130,7 @@ def init_cmd(
     out.phase(i18n.t("cli.build.phase_decompile"))
     out.phase(i18n.t("cli.decompile.may_take"))
     
-    #_ run_decompile_only ya maneja su propio Progress bar, evitamos anidar out.status para prevenir parpadeos
+    #_ run_decompile_only already handles its own Progress bar, we avoid nesting out.status to prevent flickering
     success, err = decompile.run_decompile_only(root, versions=versions_list, single_thread_mode=single_thread)
     
     if not success:
@@ -132,7 +140,7 @@ def init_cmd(
     out.phase(i18n.t("cli.build.phase_decompile_done"))
 
     out.phase(i18n.t("cli.prune.pruning"))
-    #_ run_prune_only ya maneja su propio Progress bar
+    #_ run_prune_only already handles its own Progress bar
     success, err = prune.run_prune_only(root, versions=versions_list)
 
     if not success:
@@ -143,7 +151,7 @@ def init_cmd(
 
     out.phase(i18n.t("cli.build.phase_index"))
     for v in versions_list:
-        #_ extractor.run_index ya maneja su propio Progress bar
+        #_ extractor.run_index already handles its own Progress bar
         ok, payload = extractor.run_index(root, v)
         if ok:
             classes, methods, constants = payload
@@ -219,7 +227,7 @@ def decompile_cmd(
     versions = _resolve_context_versions(root, version, default_to_all=False)
 
     out.phase(i18n.t("cli.decompile.may_take"))
-    #_ Eliminado out.status anidado
+    #_ Removed nested out.status
     success, err = decompile.run_decompile_only(root, versions=versions, single_thread_mode=single_thread)
 
     if success:
@@ -243,7 +251,7 @@ def prune_cmd(
     versions = _resolve_context_versions(root, version, default_to_all=False)
     
     out.phase(i18n.t("cli.prune.pruning"))
-    #_ Eliminado out.status anidado
+    #_ Removed nested out.status
     success, err = prune.run_prune_only(root, versions=versions)
 
     if success:
@@ -273,7 +281,7 @@ def db_cmd(
         return 1
 
     for v in versions_to_index:
-        #_ Eliminado out.status anidado
+        #_ Removed nested out.status
         ok, payload = extractor.run_index(root, v)
         if ok:
             classes, methods, constants = payload
