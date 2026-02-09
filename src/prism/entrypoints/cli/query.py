@@ -1,52 +1,65 @@
-# query command: FTS5 search in the DB.
+# src/prism/entrypoints/cli/query.py
+#? 'query' command for FTS5 search in the DB, using Typer.
 
 import json
-import sys
 from pathlib import Path
-import argparse # NEW IMPORT
+from typing import Optional
+from enum import Enum
+
+import typer
+from typing_extensions import Annotated
 
 from ...application import search
 from ... import i18n
 from ...domain.constants import VALID_SERVER_VERSIONS
 from ...infrastructure import config_impl
+from . import out
 
-# from . import args as cli_args # REMOVED
+#_ Create a dynamic Enum for the server versions for Typer's choice validation
+VersionEnum = Enum("VersionEnum", {v: v for v in VALID_SERVER_VERSIONS})
 
-
-def cmd_query(
-    root: Path | None = None,
-    query_term: str = "",
-    version: str = "release",
-    limit: int = 30,
-    output_json: bool = False,
+def query_callback(
+    ctx: typer.Context,
+    term: Annotated[str, typer.Argument(help=i18n.t("cli.query.term_help"), rich_help_panel="Arguments")],
+    version: Annotated[VersionEnum, typer.Option("--version", "-v", help=i18n.t("cli.query.version_help"), rich_help_panel="Search Options")] = VersionEnum.release,
+    json_output: Annotated[bool, typer.Option("--json", "-j", help=i18n.t("cli.query.json_help"), rich_help_panel="Output Options")] = False,
+    limit: Annotated[int, typer.Option("--limit", "-n", help=i18n.t("cli.query.limit_help"), rich_help_panel="Search Options")] = 30,
 ) -> int:
-    """Executes FTS5 search in the DB for the given version. output_json: only prints JSON."""
-    root = root or config_impl.get_project_root()
-    if not query_term or not query_term.strip():
-        print(i18n.t("cli.query.usage"), file=sys.stderr)
-        return 1
-    if version not in VALID_SERVER_VERSIONS:
-        print(i18n.t("cli.context.use.invalid"), file=sys.stderr)
-        return 1
-    results, err = search.search_api(root, version, query_term.strip(), limit=limit)
+    """
+    Executes an FTS5 search in the DB for the given version.
+    """
+    root: Path = ctx.obj["root"]
+    version_str = version.value
+
+    if not term.strip():
+        out.error(i18n.t("cli.query.usage"))
+        raise typer.Exit(code=1)
+    
+    with out.status(i18n.t("cli.query.searching", term=term, version=version_str)):
+        results, err = search.search_api(root, version_str, term.strip(), limit=limit)
+
     if err is not None:
-        print(err["message"], file=sys.stderr)
+        out.error(err["message"])
         if err.get("hint"):
-            print(err["hint"], file=sys.stderr)
-        return 1
-    if output_json:
-        out = {"version": version, "term": query_term.strip(), "count": len(results), "results": results}
-        print(json.dumps(out, ensure_ascii=False))
+            out.error(err["hint"])
+        raise typer.Exit(code=1)
+        
+    if json_output:
+        json_output_data = {"version": version_str, "term": term.strip(), "count": len(results), "results": results}
+        print(json.dumps(json_output_data, ensure_ascii=False))
         return 0
-    print(i18n.t("cli.query.result_count", count=len(results), term=query_term, version=version))
-    for r in results:
-        print(f"  {r['package']}.{r['class_name']} ({r['kind']}) :: {r['method_name']}({r['params']}) -> {r['returns']}")
+
+    if not results:
+        out.success(i18n.t("cli.query.no_results", term=term, version=version_str))
+        return 0
+
+    out.phase(i18n.t("cli.query.result_count", count=len(results), term=term, version=version_str))
+    
+    columns = ["package", "class_name", "kind", "method_name", "params", "returns"]
+    out.table(
+        title=i18n.t("cli.query.table_title"),
+        data=results,
+        columns=columns
+    )
+    
     return 0
-
-
-def run_query(args: argparse.Namespace, root: Path) -> int:
-    """Dispatch of the query command."""
-    if not args.term:
-        print(i18n.t("cli.query.usage"), file=sys.stderr)
-        return 1
-    return cmd_query(root, query_term=args.term, version=args.version, limit=args.limit, output_json=args.json)
