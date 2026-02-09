@@ -1,9 +1,13 @@
-# context / ctx commands: detect, init, clean, reset, decompile, prune, db, list, use.
+# src/prism/entrypoints/cli/context.py
+#? Comandos 'context' / 'ctx' para gestionar el workspace, con Typer.
 
-import argparse # NEW IMPORT
 import os
 import sys
 from pathlib import Path
+from typing import Optional
+
+import typer
+from typing_extensions import Annotated
 
 from ...application import get_context_list
 from ... import i18n
@@ -16,25 +20,21 @@ from ...infrastructure import file_config
 from ...infrastructure import prune
 from ...infrastructure import workspace_cleanup
 
-# from . import args as cli_args # REMOVED
 from . import out
 
+#_ Creamos una sub-aplicación de Typer para los comandos 'context'
+app = typer.Typer(help=i18n.t("cli.context.help"))
 
 def _ensure_dirs(root: Path) -> None:
-    """Ensures that workspace/server, decompiled, db and logs directories exist."""
+    """Asegura que los directorios del workspace, decompiled, db y logs existan."""
     config_impl.get_workspace_dir(root).mkdir(parents=True, exist_ok=True)
     (config_impl.get_workspace_dir(root) / "server").mkdir(parents=True, exist_ok=True)
     config_impl.get_decompiled_dir(root).mkdir(parents=True, exist_ok=True)
     config_impl.get_db_dir(root).mkdir(parents=True, exist_ok=True)
     (root / "logs").mkdir(parents=True, exist_ok=True)
 
-
-def cmd_init(root: Path | None = None) -> int:
-    """
-    Detects HytaleServer.jar, validates and saves config to .prism.json.
-    Creates workspace directories if they don't exist.
-    """
-    root = root or config_impl.get_project_root()
+def _cmd_init_logic(root: Path) -> int:
+    """Lógica interna para detectar HytaleServer.jar y guardar la configuración."""
     _ensure_dirs(root)
 
     env_jar = os.environ.get(config_impl.ENV_JAR_PATH)
@@ -71,15 +71,9 @@ def cmd_init(root: Path | None = None) -> int:
     out.success(i18n.t("cli.init.success_config", path=config_impl.get_config_path(root)))
     return 0
 
-
-def cmd_context_detect(root: Path | None = None) -> int:
-    """Detects JAR and saves config (same logic as top-level init)."""
-    return cmd_init(root)
-
-
 def _resolve_context_versions(root: Path, version: str | None) -> list[str] | None:
-    """Determines the list of versions to use; None if no JAR is configured."""
-    if version is not None and version != "all": # Handle 'all' explicitly for versions
+    """Determina la lista de versiones a usar; None si no hay JAR configurado."""
+    if version is not None and version != "all":
         return [version]
     versions = []
     if config_impl.get_jar_path_release_from_config(root):
@@ -91,11 +85,25 @@ def _resolve_context_versions(root: Path, version: str | None) -> list[str] | No
     return versions if versions else None
 
 
-def cmd_context_init(root: Path | None = None, version: str | None = None, single_thread_mode: bool = False) -> int:
-    """Full pipeline: detect (always at start) → decompile (JADX only) → prune → db. version=None -> all."""
-    root = root or config_impl.get_project_root()
-    # Always run detect first (same as ctx detect) to ensure JAR and config are up to date.
-    if cmd_init(root) != 0:
+@app.command(name="detect")
+def detect_cmd(
+    ctx: typer.Context
+) -> int:
+    """Detecta HytaleServer.jar y guarda la configuración."""
+    root: Path = ctx.obj["root"]
+    return _cmd_init_logic(root)
+
+
+@app.command(name="init")
+def init_cmd(
+    ctx: typer.Context,
+    version: Annotated[Optional[str], typer.Argument(help="Versión específica a procesar (release, prerelease), o 'all'.")] = None,
+    single_thread: Annotated[bool, typer.Option("--single-thread", "-st", help="Descompilar usando un solo hilo para reducir el uso de CPU.")] = False,
+) -> int:
+    """Pipeline completo: detecta, descompila, poda e indexa."""
+    root: Path = ctx.obj["root"]
+    
+    if _cmd_init_logic(root) != 0:
         return 1
     versions_list = _resolve_context_versions(root, version)
     if not versions_list:
@@ -106,7 +114,7 @@ def cmd_context_init(root: Path | None = None, version: str | None = None, singl
     out.phase(i18n.t("cli.decompile.may_take"))
     
     with out.status(i18n.t("cli.build.phase_decompile")):
-        success, err = decompile.run_decompile_only(root, versions=versions_list, single_thread_mode=single_thread_mode)
+        success, err = decompile.run_decompile_only(root, versions=versions_list, single_thread_mode=single_thread)
     
     if not success:
         out.error(i18n.t("cli.build.decompile_failed"))
@@ -139,10 +147,15 @@ def cmd_context_init(root: Path | None = None, version: str | None = None, singl
     return 0
 
 
-def cmd_context_clean(root: Path | None = None, target: str = "") -> int:
-    """Cleans based on target: db | build | b | all."""
-    root = root or config_impl.get_project_root()
-    t = (target or "").strip().lower()
+@app.command(name="clean")
+def clean_cmd(
+    ctx: typer.Context,
+    target: Annotated[str, typer.Argument(help="Objetivo a limpiar: 'db' (solo bases de datos), 'build' (archivos decompilados), o 'all'.",
+                                         rich_help_panel="Opciones de limpieza")],
+) -> int:
+    """Limpia artefactos del workspace (db, build, all)."""
+    root: Path = ctx.obj["root"]
+    t = target.strip().lower()
 
     if t == "db":
         with out.status(i18n.t("cli.context.clean.cleaning_db")):
@@ -164,25 +177,33 @@ def cmd_context_clean(root: Path | None = None, target: str = "") -> int:
     return 1
 
 
-def cmd_context_reset(root: Path | None = None) -> int:
-    """Resets the project to zero: clean db + build and removes .prism.json."""
-    root = root or config_impl.get_project_root()
+@app.command(name="reset")
+def reset_cmd(
+    ctx: typer.Context
+) -> int:
+    """Reinicia el proyecto a cero: limpia db + build y elimina .prism.json."""
+    root: Path = ctx.obj["root"]
     with out.status(i18n.t("cli.context.reset.reseting")):
         workspace_cleanup.reset_workspace(root)
     out.success(i18n.t("cli.context.reset.done"))
     return 0
 
 
-def cmd_context_decompile(root: Path | None = None, version: str | None = None, single_thread_mode: bool = False) -> int:
-    """Only JADX → decompiled_raw (without prune). version=None -> all."""
-    root = root or config_impl.get_project_root()
+@app.command(name="decompile")
+def decompile_cmd(
+    ctx: typer.Context,
+    version: Annotated[Optional[str], typer.Argument(help="Versión específica a descompilar (release, prerelease), o 'all'.")] = None,
+    single_thread: Annotated[bool, typer.Option("--single-thread", "-st", help="Descompilar usando un solo hilo para reducir el uso de CPU.")] = False,
+) -> int:
+    """Solo JADX → decompiled_raw (sin podar)."""
+    root: Path = ctx.obj["root"]
     versions = None if version is None else [version]
     if version == "all":
-        versions = _resolve_context_versions(root, None) # Get all versions if 'all' is specified
+        versions = _resolve_context_versions(root, None)
 
     out.phase(i18n.t("cli.decompile.may_take"))
     with out.status(i18n.t("cli.decompile.decompiling")):
-        success, err = decompile.run_decompile_only(root, versions=versions, single_thread_mode=single_thread_mode)
+        success, err = decompile.run_decompile_only(root, versions=versions, single_thread_mode=single_thread)
 
     if success:
         out.success(i18n.t("cli.decompile.success"))
@@ -191,12 +212,16 @@ def cmd_context_decompile(root: Path | None = None, version: str | None = None, 
     return 1
 
 
-def cmd_prune(root: Path | None = None, version: str | None = None) -> int:
-    """Only prune (raw → decompiled). version=None -> all that have raw."""
-    root = root or config_impl.get_project_root()
+@app.command(name="prune")
+def prune_cmd(
+    ctx: typer.Context,
+    version: Annotated[Optional[str], typer.Argument(help="Versión específica a podar (release, prerelease), o 'all'.")] = None,
+) -> int:
+    """Solo poda (raw → decompiled)."""
+    root: Path = ctx.obj["root"]
     versions = None if version is None else [version]
     if version == "all":
-        versions = _resolve_context_versions(root, None) # Get all versions if 'all' is specified
+        versions = _resolve_context_versions(root, None)
     
     with out.status(i18n.t("cli.prune.pruning")):
         success, err = prune.run_prune_only(root, versions=versions)
@@ -211,9 +236,13 @@ def cmd_prune(root: Path | None = None, version: str | None = None) -> int:
     return 1
 
 
-def cmd_index(root: Path | None = None, version: str | None = None) -> int:
-    """Indexes into the DB. version=None -> release and prerelease."""
-    root = root or config_impl.get_project_root()
+@app.command(name="db")
+def db_cmd(
+    ctx: typer.Context,
+    version: Annotated[Optional[str], typer.Argument(help="Versión específica a indexar (release, prerelease).")] = None,
+) -> int:
+    """Indexa el código en la DB (FTS5)."""
+    root: Path = ctx.obj["root"]
     if version is not None and version not in VALID_SERVER_VERSIONS:
         out.error(i18n.t("cli.context.use.invalid"))
         return 1
@@ -231,16 +260,20 @@ def cmd_index(root: Path | None = None, version: str | None = None) -> int:
             return 1
     return 0
 
-def cmd_context_list(root: Path | None = None) -> int:
-    """Lists indexed versions and shows which one is active."""
-    root = root or config_impl.get_project_root()
+
+@app.command(name="list")
+def list_cmd(
+    ctx: typer.Context
+) -> int:
+    """Lista las versiones indexadas y muestra cuál está activa."""
+    root: Path = ctx.obj["root"]
     provider = file_config.FileConfigProvider()
     
     with out.status(i18n.t("cli.context.list.loading")):
-        ctx = get_context_list(provider, root)
+        ctx_list = get_context_list(provider, root)
 
-    installed = ctx["indexed"]
-    active = ctx["active"]
+    installed = ctx_list["indexed"]
+    active = ctx_list["active"]
     
     if not installed:
         out.phase(i18n.t("cli.context.list.none"))
@@ -260,9 +293,13 @@ def cmd_context_list(root: Path | None = None) -> int:
     return 0
 
 
-def cmd_context_use(version_str: str, root: Path | None = None) -> int:
-    """Sets the active version (release or prerelease)."""
-    root = root or config_impl.get_project_root()
+@app.command(name="use")
+def use_cmd(
+    ctx: typer.Context,
+    version_str: Annotated[str, typer.Argument(help="Versión a establecer como activa (release, prerelease).")]
+) -> int:
+    """Establece la versión activa (release o prerelease)."""
+    root: Path = ctx.obj["root"]
     version = version_str.strip().lower()
     if version not in VALID_SERVER_VERSIONS:
         out.error(i18n.t("cli.context.use.invalid"))
@@ -276,30 +313,4 @@ def cmd_context_use(version_str: str, root: Path | None = None) -> int:
     return 0
 
 
-def run_context(args: argparse.Namespace, root: Path) -> int:
-    """Dispatch for the context | ctx command."""
-    subcommand = args.ctx_command
-
-    if subcommand == "detect":
-        return cmd_context_detect(root)
-    elif subcommand == "init":
-        return cmd_context_init(root, version=args.version, single_thread_mode=args.single_thread)
-    elif subcommand == "clean":
-        return cmd_context_clean(root, target=args.target)
-    elif subcommand == "reset":
-        return cmd_context_reset(root)
-    elif subcommand == "decompile":
-        return cmd_context_decompile(root, version=args.version, single_thread_mode=args.single_thread)
-    elif subcommand == "prune":
-        return cmd_prune(root, version=args.version)
-    elif subcommand == "db":
-        return cmd_index(root, version=args.version)
-    elif subcommand == "list":
-        return cmd_context_list(root)
-    elif subcommand == "use":
-        return cmd_context_use(args.version_str, root)
-    else:
-        # This case should ideally not be reached due to required=True in argparse
-        print(i18n.t("cli.unknown_command", cmd=f"context {subcommand}"), file=sys.stderr)
-        return 1
-
+# La función run_context se elimina porque Typer se encarga del dispatching.

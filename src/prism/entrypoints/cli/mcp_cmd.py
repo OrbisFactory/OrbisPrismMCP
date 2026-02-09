@@ -1,50 +1,56 @@
-# mcp command: starts the MCP server.
+# src/prism/entrypoints/cli/mcp_cmd.py
+#? Comando 'mcp' para iniciar el servidor MCP, con Typer.
 
 import sys
 from pathlib import Path
-import argparse # NEW IMPORT
+from typing import Optional
+
+import typer
+from typing_extensions import Annotated
 
 from ... import i18n
 from ...infrastructure import config_impl
+from . import out
 
-# from . import args as cli_args # REMOVED
+#_ Creamos una sub-aplicación de Typer para el comando 'mcp'
+app = typer.Typer(help=i18n.t("cli.mcp.help"))
 
-
-def cmd_mcp(
-    _root: Path | None = None,
-    transport: str = "stdio",
-    host: str = "0.0.0.0",
-    port: int = 8000,
+@app.command(name="start")
+def mcp_cmd(
+    ctx: typer.Context,
+    http_mode: Annotated[bool, typer.Option("--http", "-H", help="Inicia el servidor MCP en modo HTTP (por defecto: stdio).")] = False,
+    port: Annotated[int, typer.Option("--port", "-p", help="Puerto para el modo HTTP (defecto: 8000).")] = 8000,
+    host: Annotated[str, typer.Option("--host", help="Host para el modo HTTP (defecto: 0.0.0.0).")] = "0.0.0.0",
 ) -> int:
-    """Starts the MCP server for AI. Default is stdio; with transport sse (HTTP) listens on host:port."""
-    root = _root or config_impl.get_project_root()
-    if sys.stderr.isatty():
+    """Inicia el servidor MCP para IA. Por defecto stdio; con --http expone HTTP en el host:puerto."""
+    root: Path = ctx.obj["root"]
+    transport = "sse" if http_mode else "stdio"
+
+    if sys.stderr.isatty(): #_ Solo mostramos instrucciones si estamos en una TTY
         if transport == "sse":
-            print(i18n.t("cli.mcp.instructions_http_title"), file=sys.stderr)
-            print(i18n.t("cli.mcp.instructions_http_ready", host=host, port=port), file=sys.stderr)
-            print(i18n.t("cli.mcp.instructions_http_url", url=f"http://{host}:{port}/sse"), file=sys.stderr)
+            out.phase(i18n.t("cli.mcp.instructions_http_title"))
+            out.phase(i18n.t("cli.mcp.instructions_http_ready", host=host, port=port))
+            out.phase(i18n.t("cli.mcp.instructions_http_url", url=f"http://{host}:{port}/sse"))
         else:
             cwd = str(root.resolve())
             command = sys.executable
             args_str = "main.py mcp"
-            print(i18n.t("cli.mcp.instructions_title"), file=sys.stderr)
-            print(i18n.t("cli.mcp.instructions_intro"), file=sys.stderr)
-            print(i18n.t("cli.mcp.instructions_command", command=command), file=sys.stderr)
-            print(i18n.t("cli.mcp.instructions_args", args=args_str), file=sys.stderr)
-            print(i18n.t("cli.mcp.instructions_cwd", cwd=cwd), file=sys.stderr)
-            print(i18n.t("cli.mcp.instructions_ready"), file=sys.stderr)
+            out.phase(i18n.t("cli.mcp.instructions_title"))
+            out.phase(i18n.t("cli.mcp.instructions_intro"))
+            out.phase(i18n.t("cli.mcp.instructions_command", command=command))
+            out.phase(i18n.t("cli.mcp.instructions_args", args=args_str))
+            out.phase(i18n.t("cli.mcp.instructions_cwd", cwd=cwd))
+            out.phase(i18n.t("cli.mcp.instructions_ready"))
+
     from .. import mcp_server
     try:
         mcp_server.run(transport=transport, host=host, port=port)
         return 0
     except KeyboardInterrupt:
+        out.success(i18n.t("cli.mcp.server_stopped"))
         return 0
     except Exception as e:
-        print(i18n.t("cli.query.error", msg=str(e)), file=sys.stderr)
+        out.error(i18n.t("cli.mcp.error", msg=str(e)))
         return 1
 
-
-def run_mcp(args: argparse.Namespace, root: Path) -> int:
-    """Dispatch of the mcp command."""
-    transport = "sse" if args.http else "stdio"
-    return cmd_mcp(root, transport=transport, host=args.host, port=args.port)
+# La función run_mcp se elimina porque Typer se encarga del dispatching.
