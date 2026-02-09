@@ -19,8 +19,8 @@ app = typer.Typer(help=i18n.t("cli.config.help"))
 @app.command(name="set")
 def set_config_cmd(
     ctx: typer.Context,
-    key: Annotated[str, typer.Argument(help="Configuration key (e.g., \"game_path\", \"jadx_path\").")],
-    value: Annotated[str, typer.Argument(help="Value to set for the key.")],
+    key: Annotated[str, typer.Argument(help=i18n.t("cli.config.key_help"))],
+    value: Annotated[str, typer.Argument(help=i18n.t("cli.config.value_help"))],
 ) -> int:
     """Sets a configuration key-value pair."""
     root: Path = ctx.obj["root"]

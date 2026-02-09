@@ -14,9 +14,9 @@ from . import out
 
 def mcp_callback(
     ctx: typer.Context,
-    http_mode: Annotated[bool, typer.Option("--http", "-H", help="Starts the MCP server in HTTP mode (default: stdio).", rich_help_panel="Network Options")] = False,
-    port: Annotated[int, typer.Option("--port", "-p", help="Port for HTTP mode.", rich_help_panel="Network Options")] = 8000,
-    host: Annotated[str, typer.Option("--host", help="Host for HTTP mode.", rich_help_panel="Network Options")] = "0.0.0.0",
+    http_mode: Annotated[bool, typer.Option("--http", "-H", help=i18n.t("cli.mcp.http_help"), rich_help_panel="Network Options")] = False,
+    port: Annotated[int, typer.Option("--port", "-p", help=i18n.t("cli.mcp.port_help"), rich_help_panel="Network Options")] = 8000,
+    host: Annotated[str, typer.Option("--host", help=i18n.t("cli.mcp.host_help"), rich_help_panel="Network Options")] = "0.0.0.0",
 ) -> int:
     """
     Starts the MCP server for AI.

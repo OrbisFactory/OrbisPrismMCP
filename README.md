@@ -108,12 +108,12 @@ The CLI is now powered by **Typer**, providing a better user experience with enh
 |---|---|
 | `python main.py context init` | **Initial command.** Runs the full pipeline: detect, decompile, prune, and index. |
 | `python main.py context detect` | Detects `HytaleServer.jar` and saves the configuration. |
-| `python main.py context clean <db\|build\|all>` | Cleans generated artifacts. |
-| `python main.py context reset` | Resets the project to a clean state. |
+| `python main.py context clean <db\|build\|all>` | Cleans generated artifacts. Asks for confirmation on `all`. |
+| `python main.py context reset` | Resets the project to a clean state. Asks for confirmation. |
 | `python main.py context list` | Lists indexed versions and shows the active one. |
 | `python main.py context use <VERSION>` | Sets the active version (`release` or `prerelease`). |
-| `python main.py query search <TERM>` | Searches the indexed API. |
-| `python main.py mcp start` | Starts the MCP server (stdio by default). |
+| `python main.py query <TERM>` | Searches the indexed API. |
+| `python main.py mcp` | Starts the MCP server (stdio by default). |
 | `python main.py lang list` | Lists available languages. |
 | `python main.py lang set <CODE>` | Sets the CLI language. |
 | `python main.py config set <KEY> <VALUE>` | Sets a configuration value (e.g., `game_path`). |

@@ -21,7 +21,7 @@ LanguageCodeEnum = Enum("LanguageCodeEnum", {code: code for code, name in availa
 #_ Create a Typer sub-application for the 'lang' commands
 app = typer.Typer(help=i18n.t("cli.lang.help"))
 
-@app.command(name="list")
+@app.command(name="list", help=i18n.t("cli.help.lang_list_desc"))
 def list_cmd(
     ctx: typer.Context
 ) -> int:
@@ -42,7 +42,7 @@ def list_cmd(
     )
     return 0
 
-@app.command(name="set")
+@app.command(name="set", help=i18n.t("cli.help.lang_set_desc"))
 def set_cmd(
     ctx: typer.Context,
     lang_code: Annotated[LanguageCodeEnum, typer.Argument(help="Language code (e.g., \"en\", \"es\").")]

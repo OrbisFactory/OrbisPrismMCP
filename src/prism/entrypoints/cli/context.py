@@ -71,10 +71,14 @@ def _cmd_init_logic(root: Path) -> int:
     out.success(i18n.t("cli.init.success_config", path=config_impl.get_config_path(root)))
     return 0
 
-def _resolve_context_versions(root: Path, version: str | None) -> list[str] | None:
-    """Determines the list of versions to use; None if no JAR is configured."""
+def _resolve_context_versions(root: Path, version: str | None, default_to_all: bool = True) -> list[str] | None:
+    """Determina la lista de versiones a usar; None si no hay JAR configurado."""
     if version is not None and version != "all":
         return [version]
+    
+    if version is None and not default_to_all:
+        return [config_impl.get_active_version(root)]
+
     versions = []
     if config_impl.get_jar_path_release_from_config(root):
         versions.append("release")
@@ -85,7 +89,7 @@ def _resolve_context_versions(root: Path, version: str | None) -> list[str] | No
     return versions if versions else None
 
 
-@app.command(name="detect")
+@app.command(name="detect", help=i18n.t("cli.help.context_detect_desc"))
 def detect_cmd(
     ctx: typer.Context
 ) -> int:
@@ -94,7 +98,7 @@ def detect_cmd(
     return _cmd_init_logic(root)
 
 
-@app.command(name="init")
+@app.command(name="init", help=i18n.t("cli.help.context_init_desc"))
 def init_cmd(
     ctx: typer.Context,
     version: Annotated[Optional[str], typer.Argument(help="Specific version to process (release, prerelease), or 'all'.")] = None,
@@ -105,7 +109,12 @@ def init_cmd(
     
     if _cmd_init_logic(root) != 0:
         return 1
-    versions_list = _resolve_context_versions(root, version)
+    
+    if version is not None and version != "all" and version not in VALID_SERVER_VERSIONS:
+        out.error(i18n.t("cli.context.use.invalid"))
+        return 1
+
+    versions_list = _resolve_context_versions(root, version, default_to_all=True)
     if not versions_list:
         out.error(i18n.t("cli.decompile.no_jar"))
         return 1
@@ -113,8 +122,8 @@ def init_cmd(
     out.phase(i18n.t("cli.build.phase_decompile"))
     out.phase(i18n.t("cli.decompile.may_take"))
     
-    with out.status(i18n.t("cli.build.phase_decompile")):
-        success, err = decompile.run_decompile_only(root, versions=versions_list, single_thread_mode=single_thread)
+    #_ run_decompile_only ya maneja su propio Progress bar, evitamos anidar out.status para prevenir parpadeos
+    success, err = decompile.run_decompile_only(root, versions=versions_list, single_thread_mode=single_thread)
     
     if not success:
         out.error(i18n.t("cli.build.decompile_failed"))
@@ -122,8 +131,9 @@ def init_cmd(
         return 1
     out.phase(i18n.t("cli.build.phase_decompile_done"))
 
-    with out.status(i18n.t("cli.prune.pruning")):
-        success, err = prune.run_prune_only(root, versions=versions_list)
+    out.phase(i18n.t("cli.prune.pruning"))
+    #_ run_prune_only ya maneja su propio Progress bar
+    success, err = prune.run_prune_only(root, versions=versions_list)
 
     if not success:
         out.error(i18n.t("cli.prune." + err))
@@ -133,8 +143,8 @@ def init_cmd(
 
     out.phase(i18n.t("cli.build.phase_index"))
     for v in versions_list:
-        with out.status(i18n.t("cli.build.indexing_version", version=v)):
-            ok, payload = extractor.run_index(root, v)
+        #_ extractor.run_index ya maneja su propio Progress bar
+        ok, payload = extractor.run_index(root, v)
         if ok:
             classes, methods, constants = payload
             out.success(i18n.t("cli.build.indexed", version=v, classes=classes, methods=methods, constants=constants))
@@ -147,7 +157,7 @@ def init_cmd(
     return 0
 
 
-@app.command(name="clean")
+@app.command(name="clean", help=i18n.t("cli.help.context_clean_desc"))
 def clean_cmd(
     ctx: typer.Context,
     target: Annotated[str, typer.Argument(help="Target to clean: 'db' (databases only), 'build' (decompiled files), or 'all'.",
@@ -179,7 +189,7 @@ def clean_cmd(
     return 1
 
 
-@app.command(name="reset")
+@app.command(name="reset", help=i18n.t("cli.help.context_reset_desc"))
 def reset_cmd(
     ctx: typer.Context
 ) -> int:
@@ -194,7 +204,7 @@ def reset_cmd(
     return 0
 
 
-@app.command(name="decompile")
+@app.command(name="decompile", help=i18n.t("cli.help.context_decompile_desc"))
 def decompile_cmd(
     ctx: typer.Context,
     version: Annotated[Optional[str], typer.Argument(help="Specific version to decompile (release, prerelease), or 'all'.")] = None,
@@ -202,13 +212,15 @@ def decompile_cmd(
 ) -> int:
     """JADX only → decompiled_raw (without pruning)."""
     root: Path = ctx.obj["root"]
-    versions = None if version is None else [version]
-    if version == "all":
-        versions = _resolve_context_versions(root, None)
+    if version is not None and version != "all" and version not in VALID_SERVER_VERSIONS:
+        out.error(i18n.t("cli.context.use.invalid"))
+        return 1
+    
+    versions = _resolve_context_versions(root, version, default_to_all=False)
 
     out.phase(i18n.t("cli.decompile.may_take"))
-    with out.status(i18n.t("cli.decompile.decompiling")):
-        success, err = decompile.run_decompile_only(root, versions=versions, single_thread_mode=single_thread)
+    #_ Eliminado out.status anidado
+    success, err = decompile.run_decompile_only(root, versions=versions, single_thread_mode=single_thread)
 
     if success:
         out.success(i18n.t("cli.decompile.success"))
@@ -217,19 +229,22 @@ def decompile_cmd(
     return 1
 
 
-@app.command(name="prune")
+@app.command(name="prune", help=i18n.t("cli.help.context_prune_desc"))
 def prune_cmd(
     ctx: typer.Context,
     version: Annotated[Optional[str], typer.Argument(help="Specific version to prune (release, prerelease), or 'all'.")] = None,
 ) -> int:
     """Pruning only (raw → decompiled)."""
     root: Path = ctx.obj["root"]
-    versions = None if version is None else [version]
-    if version == "all":
-        versions = _resolve_context_versions(root, None)
+    if version is not None and version != "all" and version not in VALID_SERVER_VERSIONS:
+        out.error(i18n.t("cli.context.use.invalid"))
+        return 1
+
+    versions = _resolve_context_versions(root, version, default_to_all=False)
     
-    with out.status(i18n.t("cli.prune.pruning")):
-        success, err = prune.run_prune_only(root, versions=versions)
+    out.phase(i18n.t("cli.prune.pruning"))
+    #_ Eliminado out.status anidado
+    success, err = prune.run_prune_only(root, versions=versions)
 
     if success:
         if version:
@@ -241,22 +256,25 @@ def prune_cmd(
     return 1
 
 
-@app.command(name="db")
+@app.command(name="db", help=i18n.t("cli.help.context_db_desc"))
 def db_cmd(
     ctx: typer.Context,
-    version: Annotated[Optional[str], typer.Argument(help="Specific version to index (release, prerelease).")] = None,
+    version: Annotated[Optional[str], typer.Argument(help="Specific version to index (release, prerelease), or 'all'.")] = None,
 ) -> int:
     """Indexes the code into the DB (FTS5)."""
     root: Path = ctx.obj["root"]
-    if version is not None and version not in VALID_SERVER_VERSIONS:
+    if version is not None and version != "all" and version not in VALID_SERVER_VERSIONS:
         out.error(i18n.t("cli.context.use.invalid"))
         return 1
     
-    versions_to_index = [version] if version else VALID_SERVER_VERSIONS
+    versions_to_index = _resolve_context_versions(root, version, default_to_all=False)
+    if not versions_to_index:
+        out.error(i18n.t("cli.decompile.no_jar"))
+        return 1
 
     for v in versions_to_index:
-        with out.status(i18n.t("cli.build.indexing_version", version=v)):
-            ok, payload = extractor.run_index(root, v)
+        #_ Eliminado out.status anidado
+        ok, payload = extractor.run_index(root, v)
         if ok:
             classes, methods, constants = payload
             out.success(i18n.t("cli.index.success", classes=classes, methods=methods, constants=constants, version=v))
@@ -266,7 +284,7 @@ def db_cmd(
     return 0
 
 
-@app.command(name="list")
+@app.command(name="list", help=i18n.t("cli.help.context_list_desc"))
 def list_cmd(
     ctx: typer.Context
 ) -> int:
@@ -298,7 +316,7 @@ def list_cmd(
     return 0
 
 
-@app.command(name="use")
+@app.command(name="use", help=i18n.t("cli.help.context_use_desc"))
 def use_cmd(
     ctx: typer.Context,
     version_str: Annotated[str, typer.Argument(help="Version to set as active (release, prerelease).")]

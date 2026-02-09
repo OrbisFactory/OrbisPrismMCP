@@ -108,12 +108,12 @@ El CLI ahora está impulsado por **Typer**, que ofrece una mejor experiencia de 
 |---|---|
 | `python main.py context init` | **Comando inicial.** Ejecuta el pipeline completo: detectar, descompilar, podar e indexar. |
 | `python main.py context detect` | Detecta `HytaleServer.jar` y guarda la configuración. |
-| `python main.py context clean <db\|build\|all>` | Limpia los artefactos generados. |
-| `python main.py context reset` | Reinicia el proyecto a un estado limpio. |
+| `python main.py context clean <db\|build\|all>` | Limpia los artefactos generados. Pide confirmación para `all`. |
+| `python main.py context reset` | Reinicia el proyecto a un estado limpio. Pide confirmación. |
 | `python main.py context list` | Lista las versiones indexadas y muestra la activa. |
 | `python main.py context use <VERSION>` | Establece la versión activa (`release` o `prerelease`). |
-| `python main.py query search <TÉRMINO>` | Busca en la API indexada. |
-| `python main.py mcp start` | Inicia el servidor MCP (stdio por defecto). |
+| `python main.py query <TÉRMINO>` | Busca en la API indexada. |
+| `python main.py mcp` | Inicia el servidor MCP (stdio por defecto). |
 | `python main.py lang list` | Lista los idiomas disponibles. |
 | `python main.py lang set <CÓDIGO>` | Establece el idioma del CLI. |
 | `python main.py config set <CLAVE> <VALOR>` | Establece un valor de configuración (ej. `game_path`). |

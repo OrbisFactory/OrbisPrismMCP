@@ -20,24 +20,32 @@ from . import mcp_cmd
 #_ Create the main Typer application
 app = typer.Typer(
     name="prism",
-    help="Orbis Prism MCP - Hytale Modding Toolkit.",
+    help=i18n.t("cli.help.title"),
     context_settings={"help_option_names": ["-h", "--help"]}
 )
-
-#_ Add the logo at the application's start
 @app.callback()
 def main_callback(
     ctx: typer.Context,
 ):  
     """Sets the project root context."""
     ctx.ensure_object(dict)
-    ctx.obj["root"] = config_impl.get_project_root()
+    root = config_impl.get_project_root()
+    ctx.obj["root"] = root
+    
+    #_ Localize Typer Rich help headers
+    try:
+        import typer.rich_utils as r
+        r.COMMANDS_PANEL_TITLE = i18n.t("cli.help.commands_panel")
+        r.OPTIONS_PANEL_TITLE = i18n.t("cli.help.options_panel")
+        r.ARGUMENTS_PANEL_TITLE = i18n.t("cli.help.arguments_panel")
+    except ImportError:
+        pass
 
 
 #_ Add subcommands to the main CLI
 #_ Each command module (context, query, etc.) will become a Typer sub-application.
 app.add_typer(context.app, name="context", help=i18n.t("cli.context.help"))
-app.add_typer(context.app, name="ctx", help="Alias for 'context'.") # Add alias for context
+app.add_typer(context.app, name="ctx", help=i18n.t("cli.ctx.help")) # Add alias for context
 app.command(name="query", help=i18n.t("cli.query.help"))(query.query_callback)
 app.command(name="mcp", help=i18n.t("cli.mcp.help"))(mcp_cmd.mcp_callback)
 app.add_typer(lang.app, name="lang", help=i18n.t("cli.lang.help"))

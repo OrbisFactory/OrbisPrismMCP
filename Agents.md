@@ -57,7 +57,7 @@ The initial command is **`python main.py context init`**. If the JAR is missing,
 Other common commands:
 - `python main.py context list`
 - `python main.py context clean db`
-- `python main.py query search "SomeClass"`
-- `python main.py mcp start`
+- `python main.py query "SomeClass"`
+- `python main.py mcp`
 
 If you are modifying the CLI, MCP, or configuration, it is recommended to read the files in this order: `entrypoints/cli/main.py`, `entrypoints/cli/context.py`, `entrypoints/mcp_server.py`, `infrastructure/config_impl.py`.

@@ -20,10 +20,10 @@ VersionEnum = Enum("VersionEnum", {v: v for v in VALID_SERVER_VERSIONS})
 
 def query_callback(
     ctx: typer.Context,
-    term: Annotated[str, typer.Argument(help="Search term (Rust-flavored regex by default, use \\b for word boundaries).", rich_help_panel="Arguments")],
-    version: Annotated[VersionEnum, typer.Option("--version", "-v", help="Version to query against.", rich_help_panel="Search Options")] = VersionEnum.release,
-    json_output: Annotated[bool, typer.Option("--json", "-j", help="Output results in JSON format.", rich_help_panel="Output Options")] = False,
-    limit: Annotated[int, typer.Option("--limit", "-n", help="Maximum number of results.", rich_help_panel="Search Options")] = 30,
+    term: Annotated[str, typer.Argument(help=i18n.t("cli.query.term_help"), rich_help_panel="Arguments")],
+    version: Annotated[VersionEnum, typer.Option("--version", "-v", help=i18n.t("cli.query.version_help"), rich_help_panel="Search Options")] = VersionEnum.release,
+    json_output: Annotated[bool, typer.Option("--json", "-j", help=i18n.t("cli.query.json_help"), rich_help_panel="Output Options")] = False,
+    limit: Annotated[int, typer.Option("--limit", "-n", help=i18n.t("cli.query.limit_help"), rich_help_panel="Search Options")] = 30,
 ) -> int:
     """
     Executes an FTS5 search in the DB for the given version.
