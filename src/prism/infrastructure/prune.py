@@ -1,25 +1,26 @@
-# Prune: copy only com.hypixel.hytale from decompiled_raw to decompiled.
+# src/prism/infrastructure/prune.py
+#? Poda: copia solo com.hypixel.hytale de decompiled_raw a decompiled.
 
 import sys
 import shutil
 from pathlib import Path
 
-from tqdm import tqdm
+from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn, TimeElapsedColumn
 
 from . import config_impl
 
-# Subdirectories where JADX may leave sources (version-dependent)
+#_ Subdirectorios donde JADX puede dejar los fuentes (depende de la versión)
 PRUNE_SOURCE_CANDIDATES = (
-    "sources",  # Many JADX versions use -d and write to <out>/sources/
-    "",        # Or directly in the -d root
+    "sources",  #_ Muchas versiones de JADX usan -d y escriben en <out>/sources/
+    "",        #_ O directamente en la raíz de -d
 )
 
 
 def prune_to_core(raw_dir: Path, dest_dir: Path) -> tuple[bool, dict | None]:
     """
-    Copy only the core packages from raw_dir to dest_dir.
-    Packages are defined in config_impl.CORE_PACKAGE_PATHS.
-    Returns (True, {"files": N, "source_subdir": "sources"|"."}) or (False, None) if not found.
+    Copia solo los paquetes principales de raw_dir a dest_dir.
+    Los paquetes se definen en config_impl.CORE_PACKAGE_PATHS.
+    Retorna (True, {"files": N, "source_subdir": "sources"|"."}) o (False, None) si no se encuentra.
     """
     if dest_dir.exists():
         shutil.rmtree(dest_dir)
@@ -29,28 +30,40 @@ def prune_to_core(raw_dir: Path, dest_dir: Path) -> tuple[bool, dict | None]:
     total_files = 0
     detected_subdir = "."
 
-    for core_rel in config_impl.CORE_PACKAGE_PATHS:
-        source_core = None
-        source_subdir = None
-        for sub in PRUNE_SOURCE_CANDIDATES:
-            candidate = (raw_dir / sub / core_rel) if sub else (raw_dir / core_rel)
-            if candidate.is_dir():
-                source_core = candidate
-                source_subdir = sub or "."
-                break
-        
-        if source_core:
-            found_any = True
-            detected_subdir = source_subdir
-            target = dest_dir / core_rel
-            all_files = [p for p in source_core.rglob("*") if p.is_file()]
-            for src in tqdm(all_files, unit=" files", desc=f"Pruning {core_rel}", file=sys.stderr, colour="blue"):
-                rel = src.relative_to(source_core)
-                tgt = target / rel
-                tgt.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(src, tgt)
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(),
+        TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+        TimeElapsedColumn(),
+        transient=True,
+    ) as progress:
+        for core_rel in config_impl.CORE_PACKAGE_PATHS:
+            source_core = None
+            source_subdir = None
+            for sub in PRUNE_SOURCE_CANDIDATES:
+                candidate = (raw_dir / sub / core_rel) if sub else (raw_dir / core_rel)
+                if candidate.is_dir():
+                    source_core = candidate
+                    source_subdir = sub or "."
+                    break
             
-            total_files += sum(1 for _ in source_core.rglob("*.java"))
+            if source_core:
+                found_any = True
+                detected_subdir = source_subdir
+                target = dest_dir / core_rel
+                all_files = [p for p in source_core.rglob("*") if p.is_file()]
+                
+                task = progress.add_task(f"[cyan]Podando {core_rel}", total=len(all_files))
+                
+                for src in all_files:
+                    rel = src.relative_to(source_core)
+                    tgt = target / rel
+                    tgt.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(src, tgt)
+                    progress.update(task, advance=1)
+                
+                total_files += len(all_files)
 
     if not found_any:
         return (False, None)
@@ -60,8 +73,8 @@ def prune_to_core(raw_dir: Path, dest_dir: Path) -> tuple[bool, dict | None]:
 
 def run_prune_only_for_version(root: Path | None, version: str) -> tuple[bool, str]:
     """
-    Run only the prune: copy com/hypixel/hytale from decompiled_raw/<version> to decompiled/<version>.
-    Returns (True, "") or (False, "no_raw"|"prune_failed").
+    Ejecuta solo la poda: copia com/hypixel/hytale de decompiled_raw/<version> a decompiled/<version>.
+    Retorna (True, "") o (False, "no_raw"|"prune_failed").
     """
     from .. import i18n
 
@@ -70,12 +83,12 @@ def run_prune_only_for_version(root: Path | None, version: str) -> tuple[bool, s
     decompiled_dir = config_impl.get_decompiled_dir(root, version)
     if not raw_dir.is_dir():
         return (False, "no_raw")
-    print(i18n.t("cli.prune.running", version=version, raw_dir=raw_dir))
+    
     ok, stats = prune_to_core(raw_dir, decompiled_dir)
     if not ok:
-        print(i18n.t("cli.prune.no_core", raw_dir=raw_dir), file=sys.stderr)
+        out.error(i18n.t("cli.prune.no_core", raw_dir=raw_dir))
         return (False, "prune_failed")
-    print(i18n.t("cli.prune.done", files=stats["files"], dest=decompiled_dir, subdir=stats["source_subdir"]))
+    
     return (True, "")
 
 
@@ -84,8 +97,8 @@ def run_prune_only(
     versions: list[str] | None = None,
 ) -> tuple[bool, str]:
     """
-    Run only the prune for one or more versions.
-    If versions is None, process those that have an existing decompiled_raw folder.
+    Ejecuta solo la poda para una o más versiones.
+    Si versions es None, procesa aquellas que tengan una carpeta decompiled_raw existente.
     """
     root = root or config_impl.get_project_root()
     if versions is None:
