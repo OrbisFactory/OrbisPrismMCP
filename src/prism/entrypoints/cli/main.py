@@ -38,8 +38,8 @@ def main_callback(
 #_ Each command module (context, query, etc.) will become a Typer sub-application.
 app.add_typer(context.app, name="context", help=i18n.t("cli.context.help"))
 app.add_typer(context.app, name="ctx", help="Alias for 'context'.") # Add alias for context
-app.add_typer(query.app, name="query", help=i18n.t("cli.query.help"))
-app.add_typer(mcp_cmd.app, name="mcp", help=i18n.t("cli.mcp.help"))
+app.command(name="query", help=i18n.t("cli.query.help"))(query.query_callback)
+app.command(name="mcp", help=i18n.t("cli.mcp.help"))(mcp_cmd.mcp_callback)
 app.add_typer(lang.app, name="lang", help=i18n.t("cli.lang.help"))
 app.add_typer(config.app, name="config", help=i18n.t("cli.config.help")) # We rename config_impl to config for the CLI
 

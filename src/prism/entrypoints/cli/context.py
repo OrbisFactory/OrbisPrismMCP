@@ -98,7 +98,7 @@ def detect_cmd(
 def init_cmd(
     ctx: typer.Context,
     version: Annotated[Optional[str], typer.Argument(help="Specific version to process (release, prerelease), or 'all'.")] = None,
-    single_thread: Annotated[bool, typer.Option("--single-thread", "-st", help="Decompile using a single thread to reduce CPU usage.")] = False,
+    single_thread: Annotated[bool, typer.Option("--single-thread", "-st", help="Decompile using a single thread to reduce CPU usage.", rich_help_panel="Decompilation Options")] = False,
 ) -> int:
     """Full pipeline: detects, decompiles, prunes, and indexes."""
     root: Path = ctx.obj["root"]
@@ -168,6 +168,8 @@ def clean_cmd(
         out.success(i18n.t("cli.context.clean.build_done"))
         return 0
     if t == "all":
+        if not typer.confirm(i18n.t("cli.context.clean.confirm_all")):
+            raise typer.Abort()
         with out.status(i18n.t("cli.context.clean.cleaning_all")):
             workspace_cleanup.clean_db(root)
             workspace_cleanup.clean_build(root)
@@ -183,6 +185,9 @@ def reset_cmd(
 ) -> int:
     """Resets the project to zero: cleans db + build and removes .prism.json."""
     root: Path = ctx.obj["root"]
+    if not typer.confirm(i18n.t("cli.context.reset.confirm")):
+        raise typer.Abort()
+    
     with out.status(i18n.t("cli.context.reset.reseting")):
         workspace_cleanup.reset_workspace(root)
     out.success(i18n.t("cli.context.reset.done"))
@@ -193,7 +198,7 @@ def reset_cmd(
 def decompile_cmd(
     ctx: typer.Context,
     version: Annotated[Optional[str], typer.Argument(help="Specific version to decompile (release, prerelease), or 'all'.")] = None,
-    single_thread: Annotated[bool, typer.Option("--single-thread", "-st", help="Decompile using a single thread to reduce CPU usage.")] = False,
+    single_thread: Annotated[bool, typer.Option("--single-thread", "-st", help="Decompile using a single thread to reduce CPU usage.", rich_help_panel="Decompilation Options")] = False,
 ) -> int:
     """JADX only → decompiled_raw (without pruning)."""
     root: Path = ctx.obj["root"]

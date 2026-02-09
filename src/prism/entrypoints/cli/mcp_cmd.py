@@ -12,17 +12,16 @@ from ... import i18n
 from ...infrastructure import config_impl
 from . import out
 
-#_ Create a Typer sub-application for the 'mcp' command
-app = typer.Typer(help=i18n.t("cli.mcp.help"))
-
-@app.command(name="start")
-def mcp_cmd(
+def mcp_callback(
     ctx: typer.Context,
-    http_mode: Annotated[bool, typer.Option("--http", "-H", help="Starts the MCP server in HTTP mode (default: stdio).")] = False,
-    port: Annotated[int, typer.Option("--port", "-p", help="Port for HTTP mode (default: 8000).")] = 8000,
-    host: Annotated[str, typer.Option("--host", help="Host for HTTP mode (default: 0.0.0.0).")] = "0.0.0.0",
+    http_mode: Annotated[bool, typer.Option("--http", "-H", help="Starts the MCP server in HTTP mode (default: stdio).", rich_help_panel="Network Options")] = False,
+    port: Annotated[int, typer.Option("--port", "-p", help="Port for HTTP mode.", rich_help_panel="Network Options")] = 8000,
+    host: Annotated[str, typer.Option("--host", help="Host for HTTP mode.", rich_help_panel="Network Options")] = "0.0.0.0",
 ) -> int:
-    """Starts the MCP server for AI. Default is stdio; with --http, it exposes HTTP on host:port."""
+    """
+    Starts the MCP server for AI.
+    Default mode is stdio. Use --http to expose an HTTP endpoint.
+    """
     root: Path = ctx.obj["root"]
     transport = "sse" if http_mode else "stdio"
 
@@ -51,6 +50,4 @@ def mcp_cmd(
         return 0
     except Exception as e:
         out.error(i18n.t("cli.mcp.error", msg=str(e)))
-        return 1
-
-# The run_mcp function is removed because Typer handles dispatching.
+        raise typer.Exit(code=1)

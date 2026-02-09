@@ -18,25 +18,22 @@ from . import out
 #_ Create a dynamic Enum for the server versions for Typer's choice validation
 VersionEnum = Enum("VersionEnum", {v: v for v in VALID_SERVER_VERSIONS})
 
-
-#_ Create a Typer sub-application for the 'query' command
-app = typer.Typer(help=i18n.t("cli.query.help"))
-
-@app.command(name="search")
-def query_cmd(
+def query_callback(
     ctx: typer.Context,
-    term: Annotated[str, typer.Argument(help="Search term (Rust-flavored regex by default, use \\b for word boundaries).")] = "",
-    version: Annotated[VersionEnum, typer.Argument(help="Version to query (release, prerelease).")] = VersionEnum.release,
-    json_output: Annotated[bool, typer.Option("--json", "-j", help="Output results in JSON format.")] = False,
-    limit: Annotated[int, typer.Option("--limit", "-n", help="Maximum number of results (default: 30, max: 500).")] = 30,
+    term: Annotated[str, typer.Argument(help="Search term (Rust-flavored regex by default, use \\b for word boundaries).", rich_help_panel="Arguments")],
+    version: Annotated[VersionEnum, typer.Option("--version", "-v", help="Version to query against.", rich_help_panel="Search Options")] = VersionEnum.release,
+    json_output: Annotated[bool, typer.Option("--json", "-j", help="Output results in JSON format.", rich_help_panel="Output Options")] = False,
+    limit: Annotated[int, typer.Option("--limit", "-n", help="Maximum number of results.", rich_help_panel="Search Options")] = 30,
 ) -> int:
-    """Executes FTS5 search in the DB for the given version. If json_output is True, only prints JSON."""
+    """
+    Executes an FTS5 search in the DB for the given version.
+    """
     root: Path = ctx.obj["root"]
     version_str = version.value
 
     if not term.strip():
         out.error(i18n.t("cli.query.usage"))
-        return 1
+        raise typer.Exit(code=1)
     
     with out.status(i18n.t("cli.query.searching", term=term, version=version_str)):
         results, err = search.search_api(root, version_str, term.strip(), limit=limit)
@@ -45,7 +42,7 @@ def query_cmd(
         out.error(err["message"])
         if err.get("hint"):
             out.error(err["hint"])
-        return 1
+        raise typer.Exit(code=1)
         
     if json_output:
         json_output_data = {"version": version_str, "term": term.strip(), "count": len(results), "results": results}
@@ -66,5 +63,3 @@ def query_cmd(
     )
     
     return 0
-
-# The run_query function is removed because Typer handles dispatching.
