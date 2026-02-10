@@ -3,6 +3,8 @@
 
 import sys
 import urllib.request
+import zipfile
+import shutil
 from pathlib import Path
 
 from . import config_impl
@@ -46,18 +48,57 @@ def download_jar(url: str, dest_path: Path, description: str | None = None) -> b
         return False
 
 
-def ensure_vineflower(root: Path) -> Path | None:
-    """Checks if Vineflower is available, downloads it if not."""
-    from . import config_impl
+def ensure_jadx(root: Path | None = None) -> Path | None:
+    """
+    Ensures JADX-CLI Fat JAR is present in workspace/bin. Downloads and extracts from ZIP if missing.
+    Returns Path to the JAR or None if failed.
+    """
+    root = root or config_impl.get_project_root()
+    dest_jar = config_impl.get_jadx_jar_path(root)
     
-    path = config_impl.get_vineflower_path_from_config(root)
-    if path and path.is_file():
-        return path
+    if dest_jar.is_file():
+        return dest_jar
     
-    #_ Not found, let's download to workspace/bin
-    dest = config_impl.get_workspace_dir(root) / "bin" / config_impl.VINEFLOWER_JAR_NAME
-    url = config_impl.VINEFLOWER_DEFAULT_URL
+    url = config_impl.get_jadx_url()
+    desc = i18n.t("cli.decompile.downloading")
     
-    if download_jar(url, dest, i18n.t("cli.decompile.downloading")):
-        return dest
+    bin_dir = config_impl.get_bin_dir(root)
+    bin_dir.mkdir(parents=True, exist_ok=True)
+    
+    zip_path = bin_dir / f"jadx-{config_impl.JADX_VERSION}.zip"
+    extracted = False
+    
+    #_ Clean old artifacts if any
+    if zip_path.exists():
+        zip_path.unlink()
+
+    if download_jar(url, zip_path, desc):
+        try:
+            #_ Extract specific all-jar from zip
+            with zipfile.ZipFile(zip_path, 'r') as zf:
+                #_ JADX zip structure contains lib/jadx-<version>-all.jar
+                all_jar_name = config_impl.JADX_JAR_NAME
+                target_member = None
+                for member in zf.namelist():
+                    if member.endswith(f"/lib/{all_jar_name}") or member == f"lib/{all_jar_name}":
+                        target_member = member
+                        break
+                
+                if target_member:
+                    #_ Extract it to bin/
+                    with zf.open(target_member) as source, open(dest_jar, "wb") as target:
+                        shutil.copyfileobj(source, target)
+                    extracted = True
+                else:
+                    print(f"Error: Could not find {all_jar_name} in JADX zip.")
+        except Exception as e:
+            print(f"Error extracting JADX: {e}")
+        
+        #_ Clean up zip after closing
+        if zip_path.exists():
+            zip_path.unlink()
+        
+        if extracted:
+            return dest_jar
+            
     return None

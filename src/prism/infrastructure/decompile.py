@@ -1,5 +1,5 @@
 # src/prism/infrastructure/decompile.py
-#? Decompilation pipeline: Vineflower.
+#? Decompilation pipeline: JADX.
 
 import os
 import sys
@@ -31,37 +31,44 @@ def check_java() -> bool:
         return False
 
 
-def run_vineflower(
+def run_jadx(
     jar_path: Path,
     out_dir: Path,
-    vineflower_jar: Path,
+    jadx_jar: Path,
     log_path: Path | None = None,
 ) -> tuple[bool, bool]:
     """
-    Runs Vineflower on the JAR and writes the output to out_dir.
+    Runs JADX on the JAR and writes the output to out_dir.
     Returns (True, had_errors).
     """
     if out_dir.exists():
         shutil.rmtree(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     
-    #_ Optimization: Use all available CPU cores
+    #_ JADX optimization: Use native threads for better performance
     cpu_cores = os.cpu_count() or 4
     
-    #_ JVM Optimizations for batch tasks
-    #_ -Xmx4G: Max heap
-    #_ -XX:+UseParallelGC: Faster for throughput in batch jobs
+    #_ JVM + JADX Flags
+    #_ -Xmx4G: Required for large Hytale class pools
+    #_ -Djava.awt.headless=true: Force no-UI mode
+    #_ -cp + JadxCLI: Explicitly bypass GUI entry point
+    #_ --threads-count: Native parallelism
+    #_ --show-bad-code: Fidelity
+    #_ --no-res: Skip assets (faster)
+    #_ --comments-level none: Cleaner source
     cmd = [
         "java",
         "-Xmx4G",
+        "-Djava.awt.headless=true",
         "-XX:+UseParallelGC",
-        "-jar", str(vineflower_jar.resolve()),
-        f"--thread-count={cpu_cores}",
-        "-dgs=1",
-        "-rsy=1",
-        "-ind=4",
+        "-cp", str(jadx_jar.resolve()),
+        "jadx.cli.JadxCLI",
         str(jar_path.resolve()),
-        str(out_dir.resolve()),
+        "-d", str(out_dir.resolve()),
+        "--threads-count", str(cpu_cores),
+        "--show-bad-code",
+        "--no-res",
+        "--comments-level", "none",
     ]
     
     #_ Count total classes in JAR to have a progress target
@@ -79,7 +86,7 @@ def run_vineflower(
                 f.write(f"Command: {' '.join(cmd)}\n\n")
 
         with out.progress() as progress:
-            task = progress.add_task("[cyan]Decompiling with Vineflower", total=total_classes)
+            task = progress.add_task("[cyan]Decompiling with JADX", total=total_classes)
             
             proc = subprocess.Popen(
                 cmd,
@@ -118,7 +125,7 @@ def run_vineflower(
 
         return (True, proc.returncode != 0)
     except Exception as e:
-        print(f"Vineflower execution failed: {e}", file=sys.stderr)
+        print(f"JADX execution failed: {e}", file=sys.stderr)
         return (False, False)
 
 
@@ -138,9 +145,9 @@ def run_decompile_only_for_version(root: Path | None, version: str) -> tuple[boo
     if not check_java():
         return (False, "java_not_found")
 
-    vineflower_jar = jar_downloader.ensure_vineflower(root)
-    if not vineflower_jar:
-        return (False, "no_vineflower")
+    jadx_jar = jar_downloader.ensure_jadx(root)
+    if not jadx_jar:
+        return (False, "no_jadx")
 
     raw_dir = config_impl.get_decompiled_raw_dir(root, version)
     raw_dir.mkdir(parents=True, exist_ok=True)
@@ -151,7 +158,7 @@ def run_decompile_only_for_version(root: Path | None, version: str) -> tuple[boo
     log_path = logs_dir / f"decompile_{version}_{timestamp}.log"
 
     from .. import i18n
-    ok, had_errors = run_vineflower(jar_path, raw_dir, vineflower_jar, log_path)
+    ok, had_errors = run_jadx(jar_path, raw_dir, jadx_jar, log_path)
     if not ok:
         return (False, "decompile_failed")
     
@@ -162,7 +169,7 @@ def run_decompile_only(
     root: Path | None = None,
     versions: list[str] | None = None,
 ) -> tuple[bool, str]:
-    """Runs Vineflower only (without pruning)."""
+    """Runs JADX only (without pruning)."""
     root = root or config_impl.get_project_root()
     if versions is None:
         versions = [config_impl.get_active_version(root)]
@@ -175,7 +182,7 @@ def run_decompile_only(
 
 
 def run_decompile_and_prune_for_version(root: Path | None, version: str) -> tuple[bool, str]:
-    """Decompiles with Vineflower and prunes."""
+    """Decompiles with JADX and prunes."""
     ok, err = run_decompile_only_for_version(root, version)
     if not ok:
         return (False, err)
@@ -198,7 +205,7 @@ def run_decompile_and_prune(
     root: Path | None = None,
     versions: list[str] | None = None,
 ) -> tuple[bool, str]:
-    """Decompiles and prunes one or more versions using Vineflower."""
+    """Decompiles and prunes one or more versions using JADX."""
     root = root or config_impl.get_project_root()
     if versions is None:
         versions = [config_impl.get_active_version(root)]

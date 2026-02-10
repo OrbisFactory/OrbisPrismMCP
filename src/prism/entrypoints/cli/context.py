@@ -214,7 +214,7 @@ def decompile_cmd(
     ctx: typer.Context,
     version: Annotated[Optional[str], typer.Argument(help="Specific version to decompile (release, prerelease), or 'all'.")] = None,
 ) -> int:
-    """Vineflower only → decompiled_raw (without pruning)."""
+    """JADX only → decompiled_raw (without pruning)."""
     root: Path = ctx.obj["root"]
     if version is not None and version != "all" and version not in VALID_SERVER_VERSIONS:
         out.error(i18n.t("cli.context.use.invalid"))
