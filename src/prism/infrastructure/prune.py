@@ -9,9 +9,9 @@ from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn, TimeEl
 
 from . import config_impl
 
-#_ Subdirectories where JADX may leave sources (version-dependent)
+#_ Subdirectories where decompilers may leave sources (version-dependent)
 PRUNE_SOURCE_CANDIDATES = (
-    "sources",  #_ Many JADX versions use -d and write to <out>/sources/
+    "sources",  #_ Some engines use -d and write to <out>/sources/
     "",        #_ Or directly in the -d root
 )
 

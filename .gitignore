@@ -19,6 +19,7 @@ workspace/decompiled_raw/
 workspace/db/*.db
 workspace/server/*.jar
 workspace/server/**/*.jar
+workspace/bin
 
 # Config local (puede contener rutas absolutas)
 .prism.json

@@ -136,7 +136,7 @@ def init_cmd(
         return 1
     out.phase(i18n.t("cli.build.phase_decompile_done"))
 
-    out.phase(i18n.t("cli.prune.pruning"))
+    out.phase(i18n.t("cli.build.phase_prune"))
     #_ run_prune_only already handles its own Progress bar
     success, err = prune.run_prune_only(root, versions=versions_list)
 
