@@ -10,6 +10,7 @@ env/
 .eggs/
 dist/
 build/
+temp/
 .agent/
 
 # Workspace: no versionar descompilado ni DB ni JARs

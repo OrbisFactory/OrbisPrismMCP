@@ -62,15 +62,15 @@ def set_config_cmd(
         if sibling:
             out.success(i18n.t("cli.init.sibling_saved", path=sibling))
         return 0
-    elif key == "jadx_path":
-        jadx_path = Path(value).resolve()
-        if not jadx_path.is_file():
+    elif key == "vineflower_path":
+        vf_path = Path(value).resolve()
+        if not vf_path.is_file():
             out.error(i18n.t("cli.config.jadx_path_invalid", path=value))
             return 1
         cfg = config_impl.load_config(root)
-        cfg[config_impl.CONFIG_KEY_JADX_PATH] = str(jadx_path)
+        cfg[config_impl.CONFIG_KEY_VINEFLOWER_PATH] = str(vf_path)
         config_impl.save_config(cfg, root)
-        out.success(i18n.t("cli.config.jadx_path_set_success", path=jadx_path))
+        out.success(i18n.t("cli.config.jadx_path_set_success", path=vf_path))
         return 0
     else:
         out.error(i18n.t("cli.config.unknown_key", key=key))
