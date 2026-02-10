@@ -4,7 +4,9 @@
 import sys
 import urllib.request
 from pathlib import Path
-from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn, DownloadColumn, TimeRemainingColumn
+
+from . import config_impl
+from ..entrypoints.cli import out
 
 from .. import i18n
 
@@ -23,15 +25,7 @@ def download_jar(url: str, dest_path: Path, description: str | None = None) -> b
         with urllib.request.urlopen(url) as response:
             total_size = int(response.info().get("Content-Length", 0))
             
-            with Progress(
-                SpinnerColumn(),
-                TextColumn("[progress.description]{task.description}"),
-                BarColumn(),
-                DownloadColumn(),
-                TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
-                TimeRemainingColumn(),
-                transient=True,
-            ) as progress:
+            with out.progress() as progress:
                 task = progress.add_task(desc, total=total_size)
                 
                 with open(temp_path, "wb") as f:

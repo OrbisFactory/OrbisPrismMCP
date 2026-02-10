@@ -8,11 +8,14 @@ import shutil
 from datetime import datetime
 from pathlib import Path
 
-from rich.progress import Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
+import time
+import zipfile
+#_ from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn, TimeElapsedColumn
 
 from . import config_impl
 from . import jar_downloader
 from . import prune
+from ..entrypoints.cli import out
 
 
 def check_java() -> bool:
@@ -38,15 +41,22 @@ def run_vineflower(
     Runs Vineflower on the JAR and writes the output to out_dir.
     Returns (True, had_errors).
     """
+    if out_dir.exists():
+        shutil.rmtree(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     
-    #_ Vineflower flags for modern Java (Hytale):
-    #_ -dgs=1: De-guarda of generics
-    #_ -rsy=1: Re-synthesize members
-    #_ -ind=4: Standard indentation
+    #_ Optimization: Use all available CPU cores
+    cpu_cores = os.cpu_count() or 4
+    
+    #_ JVM Optimizations for batch tasks
+    #_ -Xmx4G: Max heap
+    #_ -XX:+UseParallelGC: Faster for throughput in batch jobs
     cmd = [
         "java",
+        "-Xmx4G",
+        "-XX:+UseParallelGC",
         "-jar", str(vineflower_jar.resolve()),
+        f"--thread-count={cpu_cores}",
         "-dgs=1",
         "-rsy=1",
         "-ind=4",
@@ -54,22 +64,23 @@ def run_vineflower(
         str(out_dir.resolve()),
     ]
     
+    #_ Count total classes in JAR to have a progress target
+    total_classes = 0
+    try:
+        with zipfile.ZipFile(jar_path, 'r') as z:
+            total_classes = sum(1 for f in z.namelist() if f.endswith(".class"))
+    except:
+        total_classes = 1000 #_ Fallback
+    
     try:
         if log_path:
             log_path.parent.mkdir(parents=True, exist_ok=True)
             with open(log_path, "w", encoding="utf-8") as f:
                 f.write(f"Command: {' '.join(cmd)}\n\n")
 
-        with Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            TimeElapsedColumn(),
-            transient=True,
-        ) as progress:
-            progress.add_task("[cyan]Decompiling with Vineflower", total=None)
+        with out.progress() as progress:
+            task = progress.add_task("[cyan]Decompiling with Vineflower", total=total_classes)
             
-            #_ Vineflower doesn't give granular progress like JADX easily via stdout without custom plugins
-            #_ So we just wait for it to finish.
             proc = subprocess.Popen(
                 cmd,
                 stdout=subprocess.PIPE,
@@ -79,7 +90,26 @@ def run_vineflower(
                 errors="replace",
             )
             
-            stdout, _ = proc.communicate()
+            #_ Monitoring loop to update progress bar based on files produced
+            full_output = []
+            while proc.poll() is None:
+                #_ Count .java files in out_dir
+                count = sum(1 for _ in out_dir.rglob("*.java"))
+                progress.update(task, completed=count)
+                
+                #_ Non-blocking read of stdout
+                line = proc.stdout.readline()
+                if line:
+                    full_output.append(line)
+                
+                time.sleep(1) #_ Check every second
+            
+            #_ Catch remaining output
+            remaining = proc.stdout.read()
+            if remaining:
+                full_output.append(remaining)
+            
+            stdout = "".join(full_output)
             
             if log_path:
                 with open(log_path, "a", encoding="utf-8") as f:
