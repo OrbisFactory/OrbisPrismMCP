@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "orbis-prism"
-version = "0.5.0"
+version = "1.0.0"
 description = "Hytale SDK analysis tool and MCP server"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -15,7 +15,8 @@ authors = [
 dependencies = [
     "mcp>=1.0.0",
     "rich>=13.7.1",
-    "typer[all]>=0.12.3",
+    "typer>=0.12.3",
+    "shellingham>=1.5.4",
 ]
 
 [project.urls]

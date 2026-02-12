@@ -27,10 +27,22 @@ app = typer.Typer(
 @app.callback()
 def main_callback(
     ctx: typer.Context,
+    workspace: Annotated[Path | None, typer.Option("--workspace", "-w", help="Path to the Hytale project workspace")] = None,
 ):  
     """Sets the project root context."""
+    #_ Determine if we allow global fallback (~/.prism)
+    #_ We disable global fallback for management commands (ctx/context) 
+    #_ unless the user specifies a workspace explicitly.
+    allow_global = True
+    if not workspace:
+        #_ Check for context/ctx in arguments
+        for arg in sys.argv:
+            if arg in ["ctx", "context"]:
+                allow_global = False
+                break
+
     ctx.ensure_object(dict)
-    root = config_impl.get_project_root()
+    root = config_impl.get_project_root(override_root=workspace, allow_global=allow_global)
     ctx.obj["root"] = root
     
     #_ Localize Typer Rich help headers

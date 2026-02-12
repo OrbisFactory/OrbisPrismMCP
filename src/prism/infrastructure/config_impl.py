@@ -44,8 +44,14 @@ JADX_URL = f"https://github.com/skylot/jadx/releases/download/v{JADX_VERSION}/ja
 JADX_JAR_NAME = f"jadx-{JADX_VERSION}-all.jar"
 
 
-def get_project_root() -> Path:
+def get_project_root(override_root: Path | str | None = None, allow_global: bool = True) -> Path:
     """Project root: folder containing .prism.json, or fallback to global home."""
+    # 0. Override from parameter
+    if override_root:
+        p = Path(override_root).resolve()
+        if p.is_dir():
+            return p
+            
     # 1. Check environment variable
     env_root = os.environ.get(ENV_WORKSPACE)
     if env_root:
@@ -60,9 +66,13 @@ def get_project_root() -> Path:
             return current
         current = current.parent
         
-    # 3. Fallback to global home directory (~/.prism)
-    global_home = Path.home() / ".prism"
-    return global_home.resolve()
+    # 3. Fallback
+    if allow_global:
+        global_home = Path.home() / ".prism"
+        return global_home.resolve()
+    else:
+        # Default to CWD if we are for example initializing a new project
+        return Path.cwd().resolve()
 
 
 def get_workspace_dir(root: Path | None = None) -> Path:
