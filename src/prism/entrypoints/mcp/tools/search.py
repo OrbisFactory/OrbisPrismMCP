@@ -42,7 +42,7 @@ def register(app: FastMCP, config: ConfigProvider, repository: IndexRepository):
             repository,
             None,
             norm_version,
-            query.strip(),
+            query.strip(), #_ app_search_api will call sanitize_fts_query
             limit=limit,
             package_prefix=effective_prefix,
             kind=kind or None,

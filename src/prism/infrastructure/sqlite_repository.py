@@ -72,3 +72,7 @@ class SqliteIndexRepository:
     def get_stats(self, db_path: Path) -> tuple[int, int, int]:
         with _db.connection(db_path) as conn:
             return _db.get_stats(conn)
+
+    def list_subpackages(self, db_path: Path, package_prefix: str | None = None) -> list[str]:
+        with _db.connection(db_path) as conn:
+            return _db.list_subpackages(conn, package_prefix)

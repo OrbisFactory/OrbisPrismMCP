@@ -121,3 +121,23 @@ def get_context_list(config_provider: "ConfigProvider", root: Path | None) -> di
         if config_provider.get_db_path(root, v).is_file()
     ]
     return {"indexed": indexed, "active": active}
+
+
+def list_packages(
+    config_provider: "ConfigProvider",
+    index_repository: "IndexRepository",
+    root: Path | None,
+    version: str,
+    package_prefix: str | None = None,
+) -> tuple[list[str] | None, dict | None]:
+    """Return (packages_list, None) or (None, error_dict)."""
+    from ..domain.constants import normalize_version
+
+    root = root or config_provider.get_project_root()
+    version = normalize_version(version)
+    db_path = config_provider.get_db_path(root, version)
+    if not db_path.is_file():
+        return (None, {"error": "no_db", "message": f"Database for version {version} does not exist."})
+    
+    packages = index_repository.list_subpackages(db_path, package_prefix)
+    return (packages, None)

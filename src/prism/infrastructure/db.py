@@ -298,6 +298,28 @@ def list_classes(
     ]
 
 
+def list_subpackages(conn: sqlite3.Connection, package_prefix: str | None = None) -> list[str]:
+    """
+    Lists unique subpackages for a given prefix.
+    If prefix is 'com.hypixel', it might return ['com.hypixel.hytale', 'com.hypixel.fastutil'].
+    """
+    if not package_prefix:
+        cur = conn.execute("SELECT DISTINCT package FROM classes ORDER BY package")
+    else:
+        p = package_prefix.strip()
+        pattern = p if p.endswith(".") else f"{p}."
+        cur = conn.execute(
+            "SELECT DISTINCT package FROM classes WHERE package LIKE ? ORDER BY package",
+            (f"{pattern}%",),
+        )
+    
+    packages = [r["package"] for r in cur.fetchall()]
+    
+    #_ If we want only the immediate next level, we could process it here.
+    #_ For now, returning all subpackages that match the prefix is very useful.
+    return packages
+
+
 def search_fts(
     conn: sqlite3.Connection,
     query_term: str,

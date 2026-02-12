@@ -150,5 +150,6 @@
   "mcp.tools.prism_find_system_for_component.description": "Busca sistemas que procesan una componente específica basándose en parámetros de métodos.",
   "mcp.tools.prism_get_usage_snippet.description": "Obtiene un fragmento de código de un archivo alrededor de una cadena específica (ej. nombre de clase o método).",
   "mcp.tools.prism_detect_patterns.description": "Detecta patrones de diseño (Singleton, Factory, ECS) en una clase específica.",
+  "mcp.tools.prism_list_packages.description": "Lista paquetes de la API de Hytale. Si se proporciona package_prefix, lista subpaquetes que comiencen por ese prefijo. Útil para descubrir la estructura del proyecto.",
   "mcp.error.concept_not_found": "Concepto '{concept}' no encontrado en la base de conocimientos local. Intenta buscar clases relacionadas con 'prism_search'."
 }

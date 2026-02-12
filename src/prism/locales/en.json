@@ -150,5 +150,6 @@
   "mcp.tools.prism_find_system_for_component.description": "Searches for systems that process a specific component based on method parameters.",
   "mcp.tools.prism_get_usage_snippet.description": "Retrieves a code snippet from a file around a specific string (e.g., class or method name).",
   "mcp.tools.prism_detect_patterns.description": "Detects design patterns (Singleton, Factory, ECS) in a specific class.",
+  "mcp.tools.prism_list_packages.description": "Lists Hytale API packages. If package_prefix is provided, lists subpackages starting with that prefix. Useful for project structure discovery.",
   "mcp.error.concept_not_found": "Concept '{concept}' not found in the local knowledge base. Try searching for related classes with 'prism_search'."
 }
