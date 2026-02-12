@@ -4,5 +4,8 @@
     "System": "Lógica pura que procesa entidades con componentes específicos. Corren en el servidor y suelen tener métodos como onEntityAdded o tick.",
     "Teleport": "Componente y sistema encargado de mover entidades de forma segura entre mundos o coordenadas, gestionando el cargado de chunks.",
     "World": "Capa de abstracción que representa un universo/dimensión. Contiene el EntityStore y permite gestionar bloques y entidades.",
-    "EntityStore": "Repositorio del World que indexa y gestiona todas las entidades activas. Permite búsquedas por proximidad o volumen (AABB/Box)."
+    "EntityStore": "Repositorio del World que indexa y gestiona todas las entidades activas. Permite búsquedas por proximidad o volumen (AABB/Box).",
+    "Prefab": "Plantilla de datos que define una entidad o estructura. Incluye componentes, sus valores por defecto y configuraciones de assets.",
+    "VFX": "Efectos visuales procesados por el motor de renderizado. En el código, se suelen gestionar a través de VFXComponent o sistemas de partículas.",
+    "Interaction": "Sistema que gestiona la comunicación entre el jugador y los objetos del mundo. Basado en PickupItemInteraction o UseBlockEvent."
 }

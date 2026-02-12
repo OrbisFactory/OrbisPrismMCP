@@ -431,3 +431,19 @@ def list_events(conn: sqlite3.Connection, limit: int = 100) -> list[dict]:
         "event_classes": event_classes,
         "subscriptions": subscriptions
     }
+def find_systems_for_component(conn: sqlite3.Connection, component_name: str, limit: int = 100) -> list[dict]:
+    """
+    Finds systems that process a specific component.
+    Searches for classes with 'System' in the name having methods with the component in their parameters.
+    """
+    cur = conn.execute(
+        """SELECT DISTINCT c.package, c.class_name, c.file_path, m.method, m.params
+           FROM classes c
+           JOIN methods m ON c.id = m.class_id
+           WHERE c.class_name LIKE '%System%'
+             AND m.params LIKE ?
+           ORDER BY c.package, c.class_name
+           LIMIT ?""",
+        (f"%{component_name}%", limit),
+    )
+    return [dict(r) for r in cur.fetchall()]

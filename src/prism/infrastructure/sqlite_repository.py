@@ -84,3 +84,6 @@ class SqliteIndexRepository:
     def list_events(self, db_path: Path, limit: int = 100) -> dict:
         with _db.connection(db_path) as conn:
             return _db.list_events(conn, limit)
+    def find_systems_for_component(self, db_path: Path, component_name: str, limit: int = 100) -> list[dict]:
+        with _db.connection(db_path) as conn:
+            return _db.find_systems_for_component(conn, component_name, limit)

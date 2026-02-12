@@ -1,0 +1,11 @@
+{
+    "ECS": "Entity Component System. The base architecture of Hytale. Entities are just IDs, components contain data, and systems process logic by filtering through components.",
+    "Component": "Data container attached to an Entity. Examples: TransformComponent, HealthComponent. In Hytale Prism, they can be identified by inheriting from the Component interface.",
+    "System": "Pure logic that processes entities with specific components. They run on the server and usually have methods like onEntityAdded or tick.",
+    "Teleport": "Component and system responsible for moving entities safely between worlds or coordinates, managing chunk loading.",
+    "World": "Abstraction layer representing a universe/dimension. Contains the EntityStore and allows for block and entity management.",
+    "EntityStore": "World repository that indexes and manages all active entities. Allows searches by proximity or volume (AABB/Box).",
+    "Prefab": "Data template defining an entity or structure. Includes components, their default values, and asset configurations.",
+    "VFX": "Visual effects processed by the rendering engine. In code, they are usually managed through VFXComponent or particle systems.",
+    "Interaction": "System managing communication between players and world objects. Based on PickupItemInteraction or UseBlockEvent."
+}
