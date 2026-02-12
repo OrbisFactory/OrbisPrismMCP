@@ -115,9 +115,85 @@ Searches for direct usages of a class within the decompiled source code.
 
 ---
 
+### 11. `prism_list_packages`
+Lists available packages in the Hytale API.
+
+**Parameters:**
+- `version` (string, optional): Server version.
+- `package_prefix` (string, optional): Filter by prefix (e.g., `com.hypixel`).
+
+---
+
+### 12. `prism_find_implementations`
+Finds all classes that implement an interface or inherit from a specific class.
+
+**Parameters:**
+- `target_class` (string, required): The parent class or interface name.
+- `version` (string, optional): Server version.
+- `limit` (number, optional): Max results (default 50).
+
+---
+
+### 13. `prism_get_events`
+Lists defined events and found subscriptions in the system.
+
+**Parameters:**
+- `version` (string, optional): Server version.
+- `limit` (number, optional): Max results.
+
+---
+
+### 14. `prism_call_flow`
+Analyzes who calls a specific method, grouping results by package and class.
+
+**Parameters:**
+- `target_class` (string, required): Class name.
+- `method_name` (string, required): Method name.
+- `version` (string, optional): Server version.
+- `limit` (number, optional): Max results.
+
+---
+
+### 15. `prism_find_system_for_component`
+Finds ECS systems that process a specific component based on method signatures.
+
+**Parameters:**
+- `component_name` (string, required): Component class name.
+- `version` (string, optional): Server version.
+
+---
+
+### 16. `prism_explain_concept`
+Provides a detailed explanation of a Hytale concept (e.g., 'ECS', 'Prefab').
+Supports **Internationalization (ES/EN)** based on configuration.
+
+**Parameters:**
+- `concept` (string, required): Concept to explain.
+
+---
+
+### 17. `prism_detect_patterns`
+Detects design patterns (Singleton, Factory, ECS) in a specific class.
+
+**Parameters:**
+- `package` (string, required): Class package.
+- `class_name` (string, required): Class name.
+- `version` (string, optional): Server version.
+
+---
+
 ## 📁 Project Structure
 
 - `main.py`: FastMCP server entrypoint.
 - `bootstrap.py`: Tool registration logic.
-- `tools/`: Individual tool implementations.
-- `utils.py`: Internal helpers for parsing and processing.
+- `tools/`: Individual tool implementations organized by category:
+  - `analysis.py`: Call flow and advanced logic.
+  - `core.py`: Search and class inspection.
+  - `ecs.py`: Component and system discovery.
+  - `events.py`: Event and subscription tracking.
+  - `hierarchy.py`: Inheritance and implementations.
+  - `utils.py`: Schema and common helpers.
+- `../../application/`: Business logic services used by the tools.
+- `../../resources/`: Knowledge base for concepts (`knowledge.es.json`, `knowledge.en.json`).
+- `../../i18n.py`: Internationalization manager.
+
