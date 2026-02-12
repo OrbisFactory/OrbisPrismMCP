@@ -15,7 +15,7 @@ LOGO = r"""
 [blue] ╚═════╝ ╚═╝  ╚═╝╚═════╝ ╚═╝╚══════╝╚═╝     ╚═╝  ╚═╝╚═╝╚══════╝╚═╝     ╚═╝[/blue]
 """                                                                     
 
-VERSION_TEXT = "VERSION 0.4.0 | ORBISFACTORY"
+VERSION_TEXT = "VERSION 0.5.0 | ORBISFACTORY"
 
 def get_logo_and_version() -> Text:
     """Returns the ASCII art logo and version information combined as a Rich Text object."""

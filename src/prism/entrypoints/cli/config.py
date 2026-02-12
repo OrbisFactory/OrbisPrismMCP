@@ -63,14 +63,14 @@ def set_config_cmd(
             out.success(i18n.t("cli.init.sibling_saved", path=sibling))
         return 0
     elif key == "jadx_path":
-        jadx_path = Path(value).resolve()
-        if not jadx_path.is_file():
+        j_path = Path(value).resolve()
+        if not j_path.is_file():
             out.error(i18n.t("cli.config.jadx_path_invalid", path=value))
             return 1
         cfg = config_impl.load_config(root)
-        cfg[config_impl.CONFIG_KEY_JADX_PATH] = str(jadx_path)
+        cfg[config_impl.CONFIG_KEY_JADX_PATH] = str(j_path)
         config_impl.save_config(cfg, root)
-        out.success(i18n.t("cli.config.jadx_path_set_success", path=jadx_path))
+        out.success(i18n.t("cli.config.jadx_path_set_success", path=j_path))
         return 0
     else:
         out.error(i18n.t("cli.config.unknown_key", key=key))
