@@ -5,13 +5,14 @@ import sys
 import shutil
 from pathlib import Path
 
-from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn, TimeElapsedColumn
+#_ from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn, TimeElapsedColumn
 
 from . import config_impl
+from ..entrypoints.cli import out
 
-#_ Subdirectories where JADX may leave sources (version-dependent)
+#_ Subdirectories where decompilers may leave sources (version-dependent)
 PRUNE_SOURCE_CANDIDATES = (
-    "sources",  #_ Many JADX versions use -d and write to <out>/sources/
+    "sources",  #_ Some engines use -d and write to <out>/sources/
     "",        #_ Or directly in the -d root
 )
 
@@ -30,14 +31,7 @@ def prune_to_core(raw_dir: Path, dest_dir: Path) -> tuple[bool, dict | None]:
     total_files = 0
     detected_subdir = "."
 
-    with Progress(
-        SpinnerColumn(),
-        TextColumn("[progress.description]{task.description}"),
-        BarColumn(),
-        TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
-        TimeElapsedColumn(),
-        transient=True,
-    ) as progress:
+    with out.progress() as progress:
         for core_rel in config_impl.CORE_PACKAGE_PATHS:
             source_core = None
             source_subdir = None

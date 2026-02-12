@@ -41,9 +41,9 @@ def mcp_callback(
             out.phase(i18n.t("cli.mcp.instructions_cwd", cwd=cwd))
             out.phase(i18n.t("cli.mcp.instructions_ready"))
 
-    from .. import mcp_server
+    from ..mcp import main
     try:
-        mcp_server.run(transport=transport, host=host, port=port)
+        main.run(transport=transport, host=host, port=port)
         return 0
     except KeyboardInterrupt:
         out.success(i18n.t("cli.mcp.server_stopped"))

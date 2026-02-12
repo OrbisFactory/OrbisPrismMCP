@@ -106,35 +106,6 @@ def find_jar_in_dir(directory: Path, jar_name: str = config_impl.HYTALE_JAR_NAME
     return None
 
 
-def resolve_jadx_path(root: Path | None = None) -> str | None:
-    """Resolves the JADX executable path. Order: JADX_PATH -> bin/jadx in root -> which('jadx')."""
-    root = root or config_impl.get_project_root()
-
-    def _check_path(p: Path) -> str | None:
-        if p.is_file():
-            return str(p.resolve())
-        if p.is_dir():
-            for name in ("jadx", "jadx.bat", "jadx.cmd"):
-                candidate = p / name
-                if candidate.is_file():
-                    return str(candidate.resolve())
-        return None
-
-    env_path = os.environ.get(config_impl.ENV_JADX_PATH)
-    if env_path:
-        result = _check_path(Path(env_path).resolve())
-        if result:
-            return result
-    bin_dir = root / "bin"
-    if bin_dir.is_dir():
-        for name in ("jadx", "jadx.bat", "jadx.cmd"):
-            candidate = bin_dir / name
-            if candidate.is_file():
-                return str(candidate.resolve())
-    jadx = shutil.which("jadx")
-    if jadx:
-        return jadx
-    return None
 
 
 def find_and_validate_jar(root: Path | None = None) -> Path | None:
