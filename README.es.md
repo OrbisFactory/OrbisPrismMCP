@@ -51,6 +51,7 @@ Hay documentación detallada disponible para las distintas áreas del proyecto:
 - [**Referencia del CLI**](src/prism/entrypoints/cli/README.md) — Lista completa de comandos y uso avanzado (en inglés).
 - [**Guía del Servidor MCP**](src/prism/entrypoints/mcp/README.md) — Cómo conectar Orbis Prism a Cursor, Claude u otros agentes de IA (en inglés).
 - [**Contexto de Agentes y Arquitectura**](AGENTS.md) — Detalles técnicos para colaboradores y desarrollo de IA.
+- [**The Developer's Prism**](docs/PHILOSOPHY.es.md) — Nuestra filosofía y propósito.
 - [**Contribución**](CONTRIBUTING.md) — Ayúdanos a mejorar la herramienta.
 
 ---
