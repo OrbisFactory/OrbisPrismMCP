@@ -30,11 +30,6 @@ logs/*.log
 logs/
 !logs/.gitkeep
 
-# Binarios externos (JADX etc.)
-bin/jadx*
-bin/*.bat
-!bin/.gitkeep
-
 # IDE y OS
 .idea/
 .vscode/
