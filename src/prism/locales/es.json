@@ -145,5 +145,10 @@
   "cli.config.value_help": "Valor a establecer para la clave.",
   "cli.config.jadx_path_invalid": "La ruta de JADX no es un archivo válido: {path}",
   "cli.config.jadx_path_set_success": "Ruta de JADX guardada: {path}",
-  "cli.config.unknown_key": "Clave de configuración desconocida: {key}"
+  "cli.config.unknown_key": "Clave de configuración desconocida: {key}",
+  "mcp.tools.prism_explain_concept.description": "Proporciona una explicación detallada de un concepto de Hytale (ej. 'ECS', 'Teleport').",
+  "mcp.tools.prism_find_system_for_component.description": "Busca sistemas que procesan una componente específica basándose en parámetros de métodos.",
+  "mcp.tools.prism_get_usage_snippet.description": "Obtiene un fragmento de código de un archivo alrededor de una cadena específica (ej. nombre de clase o método).",
+  "mcp.tools.prism_detect_patterns.description": "Detecta patrones de diseño (Singleton, Factory, ECS) en una clase específica.",
+  "mcp.error.concept_not_found": "Concepto '{concept}' no encontrado en la base de conocimientos local. Intenta buscar clases relacionadas con 'prism_search'."
 }

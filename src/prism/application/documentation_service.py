@@ -17,13 +17,15 @@ class DocumentationService:
                 self._knowledge_base = {}
         return self._knowledge_base
 
-    def explain_concept(self, concept: str) -> str:
+    def explain_concept(self, concept: str, t=None) -> str:
         kb = self._load_kb()
-        #_ Búsqueda exacta e insensible a mayúsculas
+        #_ Case-insensitive exact search
         concept_upper = concept.upper()
         for key, value in kb.items():
             if key.upper() == concept_upper:
                 return value
         
-        #? Si no se encuentra, devolvemos una sugerencia genérica
-        return f"Concepto '{concept}' no encontrado en la base de conocimientos local. Intenta buscar clases relacionadas con 'prism_search'."
+        #? If not found, return a localized error message if translator is provided
+        if t:
+            return t("mcp.error.concept_not_found", concept=concept)
+        return f"Concept '{concept}' not found in the local knowledge base. Use 'prism_search' to find related classes."

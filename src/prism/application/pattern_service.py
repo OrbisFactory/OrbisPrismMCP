@@ -8,7 +8,7 @@ class PatternService:
 
     def detect_patterns(self, db_path: Path, package: str, class_name: str) -> list[str]:
         """
-        Analiza una clase y detecta patrones comunes.
+        Analyzes a class and detects common patterns.
         """
         details = self.repository.get_class_and_methods(db_path, package, class_name)
         if not details:

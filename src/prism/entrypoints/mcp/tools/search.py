@@ -25,7 +25,7 @@ def register(app: FastMCP, config: ConfigProvider, repository: IndexRepository):
         limit = max(1, min(int(limit), 500)) if limit is not None else 30
         norm_version = normalize_version(version)
 
-        #_ Mapeo de capas a paquetes
+        #_ Layer mapping to packages
         layer_map = {
             "core": "com.hypixel.hytale.server.core",
             "plugins": "com.hypixel.hytale.builtin",

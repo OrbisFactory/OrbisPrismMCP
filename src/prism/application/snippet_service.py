@@ -6,9 +6,9 @@ class SnippetService:
     @staticmethod
     def get_snippet(config_provider, root, version, file_path, target_string, window=10) -> dict:
         """
-        Lee un archivo y devuelve un fragmento de código alrededor de la primera aparición de target_string.
+        Reads a file and returns a code fragment around the first occurrence of target_string.
         """
-        #_ Usamos la función existente para leer el archivo completo
+        #_ Use existing function to read the full file
         data = read_source(config_provider, root, version, file_path)
         if "error" in data:
             return data
