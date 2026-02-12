@@ -161,12 +161,12 @@ Por defecto el servidor usa **transporte stdio** (no abre ningún puerto). Tu cl
 
 Para exponer el servidor por red (por ejemplo en un contenedor):
 
-- **CLI:** `python main.py mcp --http [--port 8000] [--host 0.0.0.0]`. Por defecto escucha en `0.0.0.0:8000` (todas las interfaces).
+- **CLI:** `python main.py mcp --http [--port 8000] [--host 127.0.0.1]`. Por defecto escucha en `127.0.0.1:8000`.
 - **Variables de entorno (opcionales):** `MCP_TRANSPORT=http` (o `streamable-http`), `MCP_PORT`, `MCP_HOST`. La línea de comandos tiene prioridad sobre el entorno.
 
-El endpoint MCP en modo HTTP es `http://<host>:<port>/mcp`. Los clientes MCP compatibles con Streamable HTTP pueden conectarse a esa URL.
+El endpoint MCP en modo HTTP es `http://<host>:<port>/sse`. Los clientes MCP compatibles con SSE pueden conectarse a esa URL.
 
-**Ejemplo mínimo con Docker:** construye una imagen que instale dependencias y ejecute `python main.py mcp --http`, expón el puerto 8000 y conecta tu cliente a `http://<ip-contenedor>:8000/mcp`.
+**Ejemplo mínimo con Docker:** construye una imagen que instale dependencias y ejecute `python main.py mcp --http --host 0.0.0.0`, expón el puerto 8000 y conecta tu cliente a `http://<ip-contenedor>:8000/sse`.
 
 ## Ver también
 
