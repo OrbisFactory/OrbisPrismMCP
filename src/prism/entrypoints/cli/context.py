@@ -54,9 +54,8 @@ def _cmd_init_logic(root: Path) -> int:
     cfg = config_impl.load_config(root)
     cfg[config_impl.CONFIG_KEY_JAR_PATH] = str(jar_path.resolve())
     cfg[config_impl.CONFIG_KEY_OUTPUT_DIR] = str(config_impl.get_workspace_dir(root).resolve())
-    jadx_path = detection.resolve_jadx_path(root)
-    if jadx_path:
-        cfg[config_impl.CONFIG_KEY_JADX_PATH] = jadx_path
+    cfg[config_impl.CONFIG_KEY_JAR_PATH] = str(jar_path.resolve())
+    cfg[config_impl.CONFIG_KEY_OUTPUT_DIR] = str(config_impl.get_workspace_dir(root).resolve())
     sibling = detection.get_sibling_version_jar_path(jar_path)
     if sibling:
         if "pre-release" in str(jar_path).replace("\\", "/"):
@@ -103,7 +102,6 @@ def init_cmd(
     ctx: typer.Context,
     version: Annotated[Optional[str], typer.Argument(help=i18n.t("cli.init.version_help"))] = None,
     all_versions: Annotated[bool, typer.Option("--all", "-a", help=i18n.t("cli.init.all_help"))] = False,
-    single_thread: Annotated[bool, typer.Option("--single-thread", "-st", help=i18n.t("cli.init.st_help"), rich_help_panel="Decompilation Options")] = False,
 ) -> int:
     """Full pipeline: detects, decompiles, prunes, and indexes."""
     root: Path = ctx.obj["root"]
@@ -128,10 +126,9 @@ def init_cmd(
         return 1
 
     out.phase(i18n.t("cli.build.phase_decompile"))
-    out.phase(i18n.t("cli.decompile.may_take"))
     
     #_ run_decompile_only already handles its own Progress bar, we avoid nesting out.status to prevent flickering
-    success, err = decompile.run_decompile_only(root, versions=versions_list, single_thread_mode=single_thread)
+    success, err = decompile.run_decompile_only(root, versions=versions_list)
     
     if not success:
         out.error(i18n.t("cli.build.decompile_failed"))
@@ -139,7 +136,7 @@ def init_cmd(
         return 1
     out.phase(i18n.t("cli.build.phase_decompile_done"))
 
-    out.phase(i18n.t("cli.prune.pruning"))
+    out.phase(i18n.t("cli.build.phase_prune"))
     #_ run_prune_only already handles its own Progress bar
     success, err = prune.run_prune_only(root, versions=versions_list)
 
@@ -216,7 +213,6 @@ def reset_cmd(
 def decompile_cmd(
     ctx: typer.Context,
     version: Annotated[Optional[str], typer.Argument(help="Specific version to decompile (release, prerelease), or 'all'.")] = None,
-    single_thread: Annotated[bool, typer.Option("--single-thread", "-st", help="Decompile using a single thread to reduce CPU usage.", rich_help_panel="Decompilation Options")] = False,
 ) -> int:
     """JADX only → decompiled_raw (without pruning)."""
     root: Path = ctx.obj["root"]
@@ -226,9 +222,8 @@ def decompile_cmd(
     
     versions = _resolve_context_versions(root, version, default_to_all=False)
 
-    out.phase(i18n.t("cli.decompile.may_take"))
     #_ Removed nested out.status
-    success, err = decompile.run_decompile_only(root, versions=versions, single_thread_mode=single_thread)
+    success, err = decompile.run_decompile_only(root, versions=versions)
 
     if success:
         out.success(i18n.t("cli.decompile.success"))

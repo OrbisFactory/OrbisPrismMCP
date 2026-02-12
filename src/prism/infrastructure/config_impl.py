@@ -18,12 +18,13 @@ CORE_PACKAGE_PATHS = [
 # Environment variables (BluePrint / convention)
 ENV_JAR_PATH = "HYTALE_JAR_PATH"
 ENV_OUTPUT_DIR = "PRISM_OUTPUT_DIR"
-ENV_JADX_PATH = "JADX_PATH"
+ENV_OUTPUT_DIR = "PRISM_OUTPUT_DIR"
 ENV_LANG = "PRISM_LANG"
 ENV_WORKSPACE = "PRISM_WORKSPACE"
 ENV_DB_DIR = "PRISM_DB_DIR"
 ENV_DB_PATH_RELEASE = "PRISM_DB_PATH_RELEASE"
 ENV_DB_PATH_PRERELEASE = "PRISM_DB_PATH_PRERELEASE"
+ENV_JADX_URL = "PRISM_JADX_URL"
 
 # Config file names (project root)
 CONFIG_FILENAME = ".prism.json"
@@ -31,9 +32,16 @@ CONFIG_KEY_JAR_PATH = "jar_path"
 CONFIG_KEY_JAR_PATH_PRERELEASE = "jar_path_prerelease"
 CONFIG_KEY_JAR_PATH_RELEASE = "jar_path_release"
 CONFIG_KEY_OUTPUT_DIR = "output_dir"
-CONFIG_KEY_JADX_PATH = "jadx_path"
+CONFIG_KEY_OUTPUT_DIR = "output_dir"
 CONFIG_KEY_LANG = "lang"
 CONFIG_KEY_ACTIVE_SERVER = "active_server"
+CONFIG_KEY_JADX_PATH = "jadx_path"
+
+
+#_ JADX Decompiler (Fat JAR from Maven Central)
+JADX_VERSION = "1.5.3"
+JADX_URL = f"https://github.com/skylot/jadx/releases/download/v{JADX_VERSION}/jadx-{JADX_VERSION}.zip"
+JADX_JAR_NAME = f"jadx-{JADX_VERSION}-all.jar"
 
 
 def get_project_root() -> Path:
@@ -58,6 +66,11 @@ def get_workspace_dir(root: Path | None = None) -> Path:
     if env_dir and Path(env_dir).is_dir():
         return Path(env_dir)
     return root / "workspace"
+
+
+def get_bin_dir(root: Path | None = None) -> Path:
+    """Binary directory (for tools like Procyon)."""
+    return get_workspace_dir(root) / "bin"
 
 
 def get_config_path(root: Path | None = None) -> Path:
@@ -137,14 +150,29 @@ def get_jar_path_prerelease_from_config(root: Path | None = None) -> Path | None
     return None
 
 
+def get_jadx_jar_path(root: Path) -> Path:
+    """Path to the cached JADX JAR in workspace/bin/."""
+    return get_bin_dir(root) / JADX_JAR_NAME
+
+
+def get_jadx_url() -> str:
+    """Current JADX download URL (from env or default)."""
+    return os.environ.get(ENV_JADX_URL, JADX_URL)
+
+
 def get_jadx_path_from_config(root: Path | None = None) -> Path | None:
-    """JADX path from config. None if missing or not executable."""
+    """JADX path from config or workspace/bin."""
+    root = root or get_project_root()
     cfg = load_config(root)
     raw = cfg.get(CONFIG_KEY_JADX_PATH)
-    if not raw:
-        return None
-    p = Path(raw).resolve()
-    return p if p.is_file() else None
+    if raw:
+        p = Path(raw).resolve()
+        if p.is_file():
+            return p
+    
+    #_ Fallback to workspace/bin
+    local_path = get_jadx_jar_path(root)
+    return local_path if local_path.is_file() else None
 
 
 def get_decompiled_dir(root: Path | None = None, version: str = "release") -> Path:

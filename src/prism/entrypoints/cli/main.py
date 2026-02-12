@@ -12,7 +12,7 @@ from ...infrastructure import config_impl
 from . import branding
 from . import context
 from . import lang
-from . import config #!IMPORT_ADJUSTMENT
+from . import config
 from . import query
 from . import mcp_cmd
 
@@ -21,7 +21,8 @@ from . import mcp_cmd
 app = typer.Typer(
     name="prism",
     help=i18n.t("cli.help.title"),
-    context_settings={"help_option_names": ["-h", "--help"]}
+    context_settings={"help_option_names": ["-h", "--help"]},
+    add_completion=False
 )
 @app.callback()
 def main_callback(

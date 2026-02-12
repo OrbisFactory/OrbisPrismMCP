@@ -6,6 +6,15 @@ from typing import Any, Generator, List, Dict
 
 from rich.console import Console
 from rich.table import Table
+from rich.progress import (
+    Progress, 
+    SpinnerColumn, 
+    BarColumn, 
+    TextColumn, 
+    TimeElapsedColumn, 
+    MofNCompleteColumn,
+    TaskProgressColumn
+)
 
 #_ Separate console for status/error (stderr) and data (stdout)
 #_ stdout must be reserved for protocol (MCP) or actual data.
@@ -63,3 +72,18 @@ def status(msg: str) -> Generator[None, None, None]:
     """
     with _console.status(f"[cyan]{msg}[/cyan]", spinner="dots"):
         yield
+def progress() -> Progress:
+    """
+    Returns a standardized Progress instance configured for the CLI.
+    Uses the dedicated stderr console for a premium, non-blocking experience.
+    """
+    return Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(bar_width=40), #_ Fixed width for a cleaner, more compact look
+        TaskProgressColumn(),
+        MofNCompleteColumn(),
+        TimeElapsedColumn(),
+        console=_console,
+        transient=True,
+    )

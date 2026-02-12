@@ -298,6 +298,28 @@ def list_classes(
     ]
 
 
+def list_subpackages(conn: sqlite3.Connection, package_prefix: str | None = None) -> list[str]:
+    """
+    Lists unique subpackages for a given prefix.
+    If prefix is 'com.hypixel', it might return ['com.hypixel.hytale', 'com.hypixel.fastutil'].
+    """
+    if not package_prefix:
+        cur = conn.execute("SELECT DISTINCT package FROM classes ORDER BY package")
+    else:
+        p = package_prefix.strip()
+        pattern = p if p.endswith(".") else f"{p}."
+        cur = conn.execute(
+            "SELECT DISTINCT package FROM classes WHERE package LIKE ? ORDER BY package",
+            (f"{pattern}%",),
+        )
+    
+    packages = [r["package"] for r in cur.fetchall()]
+    
+    #_ If we want only the immediate next level, we could process it here.
+    #_ For now, returning all subpackages that match the prefix is very useful.
+    return packages
+
+
 def search_fts(
     conn: sqlite3.Connection,
     query_term: str,
@@ -347,3 +369,81 @@ def search_fts(
         if len(out) >= limit:
             break
     return out
+
+
+def find_implementations(conn: sqlite3.Connection, target_name: str, limit: int = 100) -> list[dict]:
+    """
+    Finds classes that implement an interface or extend a class.
+    Searches in 'parent' and 'interfaces' columns.
+    """
+    term = f"%{target_name}%"
+    cur = conn.execute(
+        """SELECT package, class_name, kind, parent, interfaces, file_path 
+           FROM classes 
+           WHERE parent LIKE ? OR interfaces LIKE ?
+           ORDER BY package, class_name
+           LIMIT ?""",
+        (term, term, limit),
+    )
+    return [
+        {
+            "package": r["package"],
+            "class_name": r["class_name"],
+            "kind": r["kind"],
+            "parent": r["parent"],
+            "interfaces": r["interfaces"],
+            "file_path": r["file_path"],
+        }
+        for r in cur.fetchall()
+    ]
+
+
+def list_events(conn: sqlite3.Connection, limit: int = 100) -> list[dict]:
+    """
+    Lists Hytale events.
+    1. Classes ending with 'Event'.
+    2. Methods annotated with '@Subscribe' (or similar event annotations).
+    """
+    #_ Find classes that look like events
+    cur = conn.execute(
+        """SELECT package, class_name, kind, file_path 
+           FROM classes 
+           WHERE class_name LIKE '%Event'
+           ORDER BY package, class_name
+           LIMIT ?""",
+        (limit,),
+    )
+    event_classes = [dict(r) for r in cur.fetchall()]
+    
+    #_ Find methods that handle events (annotated with @Subscribe)
+    #_ We reuse the limit or use a fraction of it
+    cur = conn.execute(
+        """SELECT c.package, c.class_name, m.method, m.params, m.annotation
+           FROM methods m
+           JOIN classes c ON c.id = m.class_id
+           WHERE m.annotation LIKE '%Subscribe%'
+           LIMIT ?""",
+        (limit,),
+    )
+    subscriptions = [dict(r) for r in cur.fetchall()]
+    
+    return {
+        "event_classes": event_classes,
+        "subscriptions": subscriptions
+    }
+def find_systems_for_component(conn: sqlite3.Connection, component_name: str, limit: int = 100) -> list[dict]:
+    """
+    Finds systems that process a specific component.
+    Searches for classes with 'System' in the name having methods with the component in their parameters.
+    """
+    cur = conn.execute(
+        """SELECT DISTINCT c.package, c.class_name, c.file_path, m.method, m.params
+           FROM classes c
+           JOIN methods m ON c.id = m.class_id
+           WHERE c.class_name LIKE '%System%'
+             AND m.params LIKE ?
+           ORDER BY c.package, c.class_name
+           LIMIT ?""",
+        (f"%{component_name}%", limit),
+    )
+    return [dict(r) for r in cur.fetchall()]

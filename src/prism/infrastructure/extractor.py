@@ -5,10 +5,11 @@ import re
 import sys
 from pathlib import Path
 
-from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn, TimeElapsedColumn
+#_ from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn, TimeElapsedColumn
 
 from . import config_impl
 from . import db
+from ..entrypoints.cli import out
 
 #_ Files processed between each commit to reduce transaction size and memory
 BATCH_COMMIT_FILES = 1000
@@ -123,14 +124,7 @@ def run_index(root: Path | None = None, version: str = "release") -> tuple[bool,
 
     db_path = config_impl.get_db_path(root, version)
     try:
-        with db.connection(db_path) as conn, Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            BarColumn(),
-            TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
-            TimeElapsedColumn(),
-            transient=True,
-        ) as progress:
+        with db.connection(db_path) as conn, out.progress() as progress:
             db.init_schema(conn)
             db.clear_tables(conn)
             files_processed = 0

@@ -3,181 +3,69 @@
 **[Read in English](README.md)**
 
 > "Deconstruct the engine, illuminate the API."
-<img width="937" height="404" alt="image" src="https://github.com/user-attachments/assets/e973c3fe-2ce2-4087-97e5-a20bff3d4109" />
 
-**Orbis Prism** es un conjunto de herramientas diseñado para el ecosistema de modding de Hytale. Su objetivo es descomponer el servidor oficial (`HytaleServer.jar`), aislar su núcleo lógico y proporcionar una interfaz de consulta inteligente (MCP) asistida por IA para desarrolladores.
+<img width="937" height="404" alt="Orbis Prism Banner" src="docs/assets/banner.png" />
 
-> **⚠️ Aviso importante**
->
-> - **Orbis Prism es una herramienta de desarrollo independiente y no está afiliada a Hypixel Studios.**
-> - **Es necesario tener instalada previamente una versión oficial del juego (Hytale).** Esta herramienta **no incluye ningún código fuente ni binario del juego**: solo localiza tu instalación, descompila el servidor que ya tienes y genera índices para consulta. Sin una instalación válida de Hytale (por ejemplo vía el launcher oficial), Orbis Prism no puede funcionar.
+**Orbis Prism** es una potente herramienta de análisis de SDK para desarrolladores de Hytale. Detecta automáticamente la instalación del juego, descompila la lógica del servidor y proporciona una interfaz inteligente lista para IA mediante el Model Context Protocol (MCP).
+
+> [!IMPORTANT]
+> **Orbis Prism** requiere una instalación oficial de Hytale. Esta herramienta no distribuye código fuente ni binarios del juego.
 
 ---
 
-## 📑 Índice
+## 🚀 Inicio Rápido
 
-- [✨ Características Principales](#características-principales)
-- [🌐 Idioma / Language](#idioma--language)
-- [🚀 Inicio Rápido](#inicio-rápido)
-  - [Requisitos](#requisitos)
-  - [Comando inicial (primera vez)](#comando-inicial-primera-vez)
-  - [Dónde se detecta HytaleServer.jar](#dónde-se-detecta-hytaleserverjar)
-  - [Instalación](#instalación)
-- [🛠 Comandos CLI](#comandos-cli)
-- [📁 Estructura del proyecto](#estructura-del-proyecto)
-- [🔌 Configurar el servidor MCP](#configurar-el-servidor-mcp)
-  - [Modo stdio (por defecto)](#modo-stdio-por-defecto)
-  - [Modo HTTP / Docker](#modo-http--docker)
-- [📚 Ver también](#ver-también)
-- [🤝 Contribuir](#contribuir)
-- [📜 License](#license)
-
-## Características Principales
-
-- **Auto-Detection:** Localiza la instalación oficial en Windows (`%APPDATA%\Hytale\install\...\Server`). Puedes sobrescribir la ruta con `python main.py config_impl set game_path <ruta>`.
-- **Prism Pipeline:** Descompilación quirúrgica usando JADX, eliminando librerías de terceros y centrándose exclusivamente en `com.hypixel.hytale`.
-- **Deep Indexing:** Generas una base de datos SQLite con búsqueda de texto completo (FTS5) sobre firmas de métodos, nombres de clases y **constantes** (campos `public static final`).
-- **Análisis Avanzado:** Herramientas para extraer la **jerarquía** de clases (padres e interfaces) y buscar **usos** directos en el código fuente descompilado.
-- **AI-Ready (MCP):** Servidor integrado de Model Context Protocol para que agentes como Claude o Cursor naveguen por la API sin alucinaciones.
-- **Multi-language:** El CLI y los mensajes al usuario están disponibles en **español** e **inglés**. Puedes cambiar el idioma en cualquier momento (ver más abajo).
-
-## Idioma / Language
-
-Orbis Prism muestra mensajes, ayuda y errores en **español** o **inglés**. El idioma se guarda en la configuración del proyecto.
-
-| Acción                  | Comando                      |
-| ----------------------- | ---------------------------- |
-| Ver idiomas disponibles | `python main.py lang list`   |
-| Cambiar a inglés        | `python main.py lang set en` |
-| Cambiar a español       | `python main.py lang set es` |
-
-Tras ejecutar `lang set <código>`, los siguientes mensajes del CLI usarán ese idioma.
-
-## Inicio Rápido
-
-### Requisitos
-
-- **Instalación oficial de Hytale** (launcher y juego). Orbis Prism no distribuye código ni binarios del juego; trabaja sobre tu instalación.
-- **Python 3.11+**
-- **Java 25** (para compatibilidad con el servidor de Hytale)
-- **JADX** https://github.com/skylot/jadx (incluido en `/bin` o disponible en el PATH)
-
-### Comando inicial (primera vez)
-
-El comando que debes ejecutar al empezar es **`python main.py ctx init`** (o `context init`). Ejecuta primero la detección (localiza el JAR de Hytale y guarda la config), luego descompila, poda e indexa la API en SQLite. Si el JAR no se encuentra, ejecuta **`python main.py ctx detect`** desde la ruta de instalación esperada o indica la ruta manualmente (ver más abajo).
-
-### Dónde se detecta HytaleServer.jar
-
-- **Windows:** Por defecto se usa la instalación oficial. Ejecuta `python main.py ctx detect` para detectarla.
-- **Ruta manual:** Solo necesitas la **carpeta raíz del juego** (no el JAR). Ejecuta `python main.py config_impl set game_path <ruta>` con esa carpeta; Orbis Prism detectará automáticamente release y pre-release si existen.
-  - **Cómo obtener la ruta:** Abre el **Launcher de Hytale** → **Settings** → **Open Directory** → copia la ruta (ej. `C:\Users\...\AppData\Roaming\Hytale`).
-
-### Instalación
-
-1. Clona el repositorio:
-
+1. **Clonar e Instalar**
    ```bash
    git clone https://github.com/OrbisFactory/OrbisPrismMCP.git
    cd OrbisPrismMCP
-   ```
-
-2. Instala dependencias:
-
-   ```bash
    pip install -r requirements.txt
    ```
 
-3. Ejecuta el comando inicial (detecta JAR, descompila e indexa la API):
-
+2. **Inicializar Espacio de Trabajo**
+   Este comando detecta tu instalación de Hytale, descompila el servidor e indexa la API.
    ```bash
    python main.py ctx init
    ```
 
-   **Si el JAR no se encuentra:**
-   - Prueba primero `python main.py ctx detect` (por si la instalación está en una ruta que se detecta automáticamente).
-   - **Para indicar la ruta manualmente:** usa la carpeta raíz del juego (no el JAR). En el **Launcher de Hytale** → **Settings** → **Open Directory** copia esa ruta y ejecuta:
-     ```bash
-     python main.py config_impl set game_path "C:\ruta\a\tu\carpeta\Hytale"
-     ```
-     Luego vuelve a ejecutar `python main.py ctx init`.
-
-## 🛠 Comandos CLI
-
-El CLI ahora está impulsado por **Typer**, que ofrece una mejor experiencia de usuario con ayuda mejorada, autocompletado y validación. El comando **inicial** recomendado es **`python main.py context init`**.
-
-| Comando | Descripción |
-|---|---|
-| `python main.py context init` | **Comando inicial.** Ejecuta el pipeline completo: detectar, descompilar, podar e indexar. |
-| `python main.py context detect` | Detecta `HytaleServer.jar` y guarda la configuración. |
-| `python main.py context clean <db\|build\|all>` | Limpia los artefactos generados. Pide confirmación para `all`. |
-| `python main.py context reset` | Reinicia el proyecto a un estado limpio. Pide confirmación. |
-| `python main.py context list` | Lista las versiones indexadas y muestra la activa. |
-| `python main.py context use <VERSION>` | Establece la versión activa (`release` o `prerelease`). |
-| `python main.py query <TÉRMINO>` | Busca en la API indexada. |
-| `python main.py mcp` | Inicia el servidor MCP (stdio por defecto). |
-| `python main.py lang list` | Lista los idiomas disponibles. |
-| `python main.py lang set <CÓDIGO>` | Establece el idioma del CLI. |
-| `python main.py config set <CLAVE> <VALOR>` | Establece un valor de configuración (ej. `game_path`). |
-
-Para una **documentación detallada del CLI** (todos los argumentos, subcomandos y flujos), consulta la [**Documentación del CLI**](src/prism/entrypoints/cli/README.md) (en inglés).
-
-## Estructura del proyecto
-
-- **`/src`**: Código fuente del orquestador (Python).
-- **`/workspace/decompiled/<version>`**: Código limpio del núcleo Hytale por versión (`release`, `prerelease`).
-- **`/workspace/decompiled_raw/<version>`**: Salida cruda de JADX antes de la poda.
-- **`/workspace/db`**: Bases SQLite por contexto (`prism_api_release.db`, `prism_api_prerelease.db`).
-- **`/bin`**: Binarios de apoyo (JADX, etc.).
-
-## Configurar el servidor MCP
-
-Por defecto el servidor usa **transporte stdio** (no abre ningún puerto). Tu cliente (Cursor, Claude Desktop, etc.) ejecuta el proceso y se comunica por stdin/stdout. Opcionalmente puedes usar **transporte HTTP** para despliegue remoto o en Docker.
-
-### Modo stdio (por defecto)
-
-1. **Ejecuta una vez** `python main.py mcp` en la carpeta del proyecto: si la salida es una terminal, se mostrarán comando, argumentos y directorio de trabajo.
-2. **En Cursor** edita la configuración MCP (p. ej. `~/.cursor/mcp.json`) y añade un bloque como este (ajusta las rutas):
-
-   ```json
-   "orbis-prism": {
-     "type": "stdio",
-     "command": "python",
-     "args": ["C:\\ruta\\absoluta\\a\\orbis-prism\\main.py", "mcp"],
-     "cwd": "C:\\ruta\\absoluta\\a\\orbis-prism",
-     "env": {
-       "PRISM_WORKSPACE": "C:\\ruta\\absoluta\\a\\orbis-prism"
-     }
-   }
+3. **Iniciar Servidor MCP**
+   ```bash
+   python main.py mcp
    ```
 
-   - **cwd** es necesario para que el servidor encuentre `.prism.json` y `workspace/db`.
-   - **env.PRISM_WORKSPACE** (opcional): si está definido, el servidor usa esta ruta como raíz del proyecto aunque el proceso se lance desde otro directorio.
+---
 
-3. Recarga la ventana de Cursor (Ctrl+Shift+P → "Developer: Reload Window") para que detecte el tool `prism_search`.
+## ⚙️ Requisitos
 
-### Modo HTTP / Docker
+- **Instalación Oficial de Hytale** (Launcher y archivos del juego).
+- **Python 3.11+**
+- **Java 25** (Necesario para la compatibilidad con el servidor de Hytale).
+- *JADX se gestiona automáticamente mediante el pipeline interno.*
 
-> **Nota:** Este modo está en fase de construcción; la interfaz y el comportamiento pueden cambiar.
+---
 
-Para exponer el servidor por red (por ejemplo en un contenedor):
+## 📚 Documentación
 
-- **CLI:** `python main.py mcp --http [--port 8000] [--host 0.0.0.0]`. Por defecto escucha en `0.0.0.0:8000` (todas las interfaces).
-- **Variables de entorno (opcionales):** `MCP_TRANSPORT=http` (o `streamable-http`), `MCP_PORT`, `MCP_HOST`. La línea de comandos tiene prioridad sobre el entorno.
+Hay documentación detallada disponible para las distintas áreas del proyecto:
 
-El endpoint MCP en modo HTTP es `http://<host>:<port>/mcp`. Los clientes MCP compatibles con Streamable HTTP pueden conectarse a esa URL.
+- [**Referencia del CLI**](src/prism/entrypoints/cli/README.md) — Lista completa de comandos y uso avanzado (en inglés).
+- [**Guía del Servidor MCP**](src/prism/entrypoints/mcp/README.md) — Cómo conectar Orbis Prism a Cursor, Claude u otros agentes de IA (en inglés).
+- [**Contexto de Agentes y Arquitectura**](AGENTS.md) — Detalles técnicos para colaboradores y desarrollo de IA.
+- [**Contribución**](CONTRIBUTING.md) — Ayúdanos a mejorar la herramienta.
 
-**Ejemplo mínimo con Docker:** construye una imagen que instale dependencias y ejecute `python main.py mcp --http`, expón el puerto 8000 y conecta tu cliente a `http://<ip-contenedor>:8000/mcp`.
+---
 
-## Ver también
+## 🌍 Soporte de Idioma
 
-- [Documentación del CLI](src/prism/entrypoints/cli/README.md) — argumentos, flujos y subcomandos detallados.
-- [AGENTS.md](AGENTS.md) — contexto técnico y arquitectura para contribuidores y agentes.
-- [CONTRIBUTING.md](CONTRIBUTING.md) — cómo contribuir al proyecto.
+El CLI soporta tanto **Inglés** como **Español**.
 
-## Contribuir
+```bash
+python main.py lang set en  # Cambiar a Inglés
+python main.py lang set es  # Cambiar a Español
+```
 
-Si quieres contribuir al proyecto, consulta la [Guía de contribución](CONTRIBUTING.md). Para contexto técnico y arquitectura (agentes, desarrollo), ver también [AGENTS.md](AGENTS.md).
+---
 
-## License
+## ⚖️ Licencia
 
-This project is licensed under the MIT License. See the `LICENSE` file for more details.
+Este proyecto está bajo la Licencia MIT. Consulta el archivo `LICENSE` para más detalles.

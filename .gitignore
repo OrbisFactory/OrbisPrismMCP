@@ -10,6 +10,7 @@ env/
 .eggs/
 dist/
 build/
+temp/
 .agent/
 
 # Workspace: no versionar descompilado ni DB ni JARs
@@ -18,6 +19,7 @@ workspace/decompiled_raw/
 workspace/db/*.db
 workspace/server/*.jar
 workspace/server/**/*.jar
+workspace/bin
 
 # Config local (puede contener rutas absolutas)
 .prism.json
@@ -27,11 +29,6 @@ workspace/prism_config.json
 logs/*.log
 logs/
 !logs/.gitkeep
-
-# Binarios externos (JADX etc.)
-bin/jadx*
-bin/*.bat
-!bin/.gitkeep
 
 # IDE y OS
 .idea/
