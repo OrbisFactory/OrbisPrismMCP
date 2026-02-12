@@ -45,18 +45,24 @@ JADX_JAR_NAME = f"jadx-{JADX_VERSION}-all.jar"
 
 
 def get_project_root() -> Path:
-    """Project root: folder containing main.py / .prism.json."""
+    """Project root: folder containing .prism.json, or fallback to global home."""
+    # 1. Check environment variable
     env_root = os.environ.get(ENV_WORKSPACE)
     if env_root:
         p = Path(env_root).resolve()
         if p.is_dir():
             return p
-    current = Path(__file__).resolve().parent
+            
+    # 2. Search upwards for .prism.json starting from CWD
+    current = Path.cwd().resolve()
     while current != current.parent:
-        if (current / "main.py").exists():
-            return current.resolve()
+        if (current / CONFIG_FILENAME).exists():
+            return current
         current = current.parent
-    return Path.cwd()
+        
+    # 3. Fallback to global home directory (~/.prism)
+    global_home = Path.home() / ".prism"
+    return global_home.resolve()
 
 
 def get_workspace_dir(root: Path | None = None) -> Path:
@@ -180,6 +186,17 @@ def get_decompiled_dir(root: Path | None = None, version: str = "release") -> Pa
     return get_workspace_dir(root) / "decompiled" / version
 
 
+def get_assets_zip_path(root: Path | None = None, version: str = "release") -> Path | None:
+    """Path to the Assets.zip file in the game installation."""
+    jar = get_jar_path_release_from_config(root) if version == "release" else get_jar_path_prerelease_from_config(root)
+    if not jar:
+        return None
+    # HytaleServer.jar is usually in .../Server/HytaleServer.jar
+    # Assets.zip is usually in .../Assets.zip (sibling of Server/ directory)
+    assets_path = jar.parent.parent / "Assets.zip"
+    return assets_path if assets_path.exists() else None
+
+
 def get_decompiled_raw_dir(root: Path | None = None, version: str = "release") -> Path:
     """Raw JADX directory for a version (before pruning)."""
     return get_workspace_dir(root) / "decompiled_raw" / version
@@ -215,6 +232,15 @@ def get_db_path(root: Path | None = None, version: str | None = None) -> Path:
         return Path(env_path.strip()).resolve()
     db_dir = get_db_dir(root)
     return db_dir / f"prism_api_{version}.db"
+
+
+def get_assets_db_path(root: Path | None = None, version: str | None = None) -> Path:
+    """Path to the specific Assets DB (hybrid approach)."""
+    root = root or get_project_root()
+    if version is None:
+        version = get_active_version(root)
+    db_dir = get_db_dir(root)
+    return db_dir / f"prism_assets_{version}.db"
 
 
 def get_logs_dir(root: Path | None = None) -> Path:

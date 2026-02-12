@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "orbis-prism"
+version = "0.5.0"
+description = "Hytale SDK analysis tool and MCP server"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [
+    {name = "OrbisFactory"}
+]
+dependencies = [
+    "mcp>=1.0.0",
+    "rich>=13.7.1",
+    "typer[all]>=0.12.3",
+]
+
+[project.urls]
+Homepage = "https://github.com/OrbisFactory/OrbisPrismMCP"
+
+[project.scripts]
+prism = "prism.entrypoints.cli.main:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["prism*"]
+
+[tool.setuptools.package-data]
+prism = ["locales/*.json"]
+
+[tool.typer]
+app = "prism.entrypoints.cli.main:app"

@@ -91,6 +91,34 @@ def init_schema(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
+def init_assets_schema(conn: sqlite3.Connection) -> None:
+    """
+    Creates tables for assets (metadata and FTS).
+    """
+    conn.execute("DROP TABLE IF EXISTS assets_fts")
+    conn.execute("DROP TABLE IF EXISTS assets")
+    
+    conn.execute("""
+        CREATE TABLE assets (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            path TEXT NOT NULL UNIQUE,
+            extension TEXT NOT NULL,
+            size INTEGER NOT NULL,
+            metadata TEXT,
+            version TEXT NOT NULL
+        )
+    """)
+    
+    conn.execute("""
+        CREATE VIRTUAL TABLE assets_fts USING fts5(
+            path,
+            metadata,
+            tokenize='unicode61'
+        )
+    """)
+    conn.commit()
+
+
 def clear_tables(conn: sqlite3.Connection) -> None:
     """Empties data tables (classes, methods, constants, api_fts) to reindex from scratch."""
     conn.execute("DELETE FROM api_fts")
@@ -445,5 +473,33 @@ def find_systems_for_component(conn: sqlite3.Connection, component_name: str, li
            ORDER BY c.package, c.class_name
            LIMIT ?""",
         (f"%{component_name}%", limit),
+    )
+    return [dict(r) for r in cur.fetchall()]
+
+
+def insert_asset(conn: sqlite3.Connection, path: str, extension: str, size: int, metadata: str | None, version: str) -> None:
+    """Inserts an asset into assets and assets_fts tables."""
+    conn.execute(
+        "INSERT OR REPLACE INTO assets (path, extension, size, metadata, version) VALUES (?, ?, ?, ?, ?)",
+        (path, extension, size, metadata, version)
+    )
+    conn.execute(
+        "INSERT INTO assets_fts (path, metadata) VALUES (?, ?)",
+        (path, metadata)
+    )
+
+
+def search_assets_fts(conn: sqlite3.Connection, query_term: str, limit: int = 50) -> list[dict]:
+    """Searches assets using FTS5."""
+    if not query_term or not query_term.strip():
+        return []
+    
+    cur = conn.execute(
+        """SELECT a.path, a.extension, a.size, a.metadata, a.version
+           FROM assets a
+           JOIN assets_fts f ON a.path = f.path
+           WHERE assets_fts MATCH ?
+           LIMIT ?""",
+        (query_term.strip(), limit)
     )
     return [dict(r) for r in cur.fetchall()]

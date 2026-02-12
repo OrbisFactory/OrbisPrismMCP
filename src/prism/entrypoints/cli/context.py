@@ -19,6 +19,8 @@ from ...infrastructure import extractor
 from ...infrastructure import file_config
 from ...infrastructure import prune
 from ...infrastructure import workspace_cleanup
+from ...infrastructure import sqlite_assets_repository
+from ...application import assets_use_cases
 
 from . import out
 
@@ -102,6 +104,7 @@ def init_cmd(
     ctx: typer.Context,
     version: Annotated[Optional[str], typer.Argument(help=i18n.t("cli.init.version_help"))] = None,
     all_versions: Annotated[bool, typer.Option("--all", "-a", help=i18n.t("cli.init.all_help"))] = False,
+    include_assets: Annotated[bool, typer.Option("--assets", help=i18n.t("cli.init.assets_help"))] = False,
 ) -> int:
     """Full pipeline: detects, decompiles, prunes, and indexes."""
     root: Path = ctx.obj["root"]
@@ -158,6 +161,25 @@ def init_cmd(
         else:
             out.error(i18n.t("cli.index.db_error"))
             return 1
+
+    if include_assets:
+        out.phase(i18n.t("cli.build.phase_assets"))
+        repo = sqlite_assets_repository.SqliteAssetsRepository()
+        use_cases = assets_use_cases.AssetsUseCases(repo)
+        for v in versions_list:
+            assets_zip = config_impl.get_assets_zip_path(root, v)
+            if not assets_zip:
+                out.phase(i18n.t("cli.assets.not_found", version=v))
+                continue
+            
+            db_path = config_impl.get_assets_db_path(root, v)
+            with out.status(i18n.t("cli.assets.indexing", version=v)) as status:
+                def progress(path, current, total):
+                    status.update(f"[cyan]{i18n.t('cli.assets.indexing_progress', current=current, total=total)}[/cyan] {path}")
+                
+                use_cases.index_assets(db_path, assets_zip, v, progress)
+            out.success(i18n.t("cli.assets.success", version=v))
+
     out.success(i18n.t("cli.build.success"))
     return 0
 
@@ -339,4 +361,34 @@ def use_cmd(
     return 0
 
 
-# The run_context function is removed because Typer handles dispatching.
+@app.command(name="assets", help=i18n.t("cli.help.context_assets_desc"))
+def assets_cmd(
+    ctx: typer.Context,
+    version: Annotated[Optional[str], typer.Argument(help="Specific version to index assets (release, prerelease), or 'all'.")] = None,
+) -> int:
+    """Indexes assets from Assets.zip."""
+    root: Path = ctx.obj["root"]
+    versions = _resolve_context_versions(root, version, default_to_all=False)
+    if not versions:
+        out.error(i18n.t("cli.decompile.no_jar"))
+        return 1
+
+    repo = sqlite_assets_repository.SqliteAssetsRepository()
+    use_cases = assets_use_cases.AssetsUseCases(repo)
+    
+    for v in versions:
+        assets_zip = config_impl.get_assets_zip_path(root, v)
+        if not assets_zip:
+            out.error(i18n.t("cli.assets.not_found", version=v))
+            continue
+        
+        db_path = config_impl.get_assets_db_path(root, v)
+        out.phase(i18n.t("cli.assets.indexing", version=v))
+        
+        with out.status(i18n.t("cli.assets.indexing", version=v)) as status:
+            def progress(path, current, total):
+                status.update(f"[cyan]{i18n.t('cli.assets.indexing_progress', current=current, total=total)}[/cyan] {path}")
+            
+            use_cases.index_assets(db_path, assets_zip, v, progress)
+        out.success(i18n.t("cli.assets.success", version=v))
+    return 0
