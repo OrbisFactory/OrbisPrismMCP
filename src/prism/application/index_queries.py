@@ -14,9 +14,11 @@ def get_class(
     version: str,
     package: str,
     class_name: str,
+    include_source: bool = False,
 ) -> tuple[dict | None, dict | None]:
     """Return (class_data, None) or (None, error_dict)."""
     from ..domain.constants import normalize_version
+    from .read_source import read_source
 
     root = root or config_provider.get_project_root()
     version = normalize_version(version)
@@ -35,6 +37,12 @@ def get_class(
             return (None, {"error": "not_found", "message": message, "suggestions": suggestions})
         
         return (None, {"error": "not_found", "message": f"Class {package}.{class_name} not found."})
+    
+    if include_source:
+        source_data = read_source(config_provider, root, version, data["file_path"])
+        if "content" in source_data:
+            data["full_source"] = source_data["content"]
+            
     return (data, None)
 
 

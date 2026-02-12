@@ -369,3 +369,65 @@ def search_fts(
         if len(out) >= limit:
             break
     return out
+
+
+def find_implementations(conn: sqlite3.Connection, target_name: str, limit: int = 100) -> list[dict]:
+    """
+    Finds classes that implement an interface or extend a class.
+    Searches in 'parent' and 'interfaces' columns.
+    """
+    term = f"%{target_name}%"
+    cur = conn.execute(
+        """SELECT package, class_name, kind, parent, interfaces, file_path 
+           FROM classes 
+           WHERE parent LIKE ? OR interfaces LIKE ?
+           ORDER BY package, class_name
+           LIMIT ?""",
+        (term, term, limit),
+    )
+    return [
+        {
+            "package": r["package"],
+            "class_name": r["class_name"],
+            "kind": r["kind"],
+            "parent": r["parent"],
+            "interfaces": r["interfaces"],
+            "file_path": r["file_path"],
+        }
+        for r in cur.fetchall()
+    ]
+
+
+def list_events(conn: sqlite3.Connection, limit: int = 100) -> list[dict]:
+    """
+    Lists Hytale events.
+    1. Classes ending with 'Event'.
+    2. Methods annotated with '@Subscribe' (or similar event annotations).
+    """
+    #_ Find classes that look like events
+    cur = conn.execute(
+        """SELECT package, class_name, kind, file_path 
+           FROM classes 
+           WHERE class_name LIKE '%Event'
+           ORDER BY package, class_name
+           LIMIT ?""",
+        (limit,),
+    )
+    event_classes = [dict(r) for r in cur.fetchall()]
+    
+    #_ Find methods that handle events (annotated with @Subscribe)
+    #_ We reuse the limit or use a fraction of it
+    cur = conn.execute(
+        """SELECT c.package, c.class_name, m.method, m.params, m.annotation
+           FROM methods m
+           JOIN classes c ON c.id = m.class_id
+           WHERE m.annotation LIKE '%Subscribe%'
+           LIMIT ?""",
+        (limit,),
+    )
+    subscriptions = [dict(r) for r in cur.fetchall()]
+    
+    return {
+        "event_classes": event_classes,
+        "subscriptions": subscriptions
+    }

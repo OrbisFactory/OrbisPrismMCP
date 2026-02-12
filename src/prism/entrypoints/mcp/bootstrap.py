@@ -2,7 +2,7 @@
 from mcp.server.fastmcp import FastMCP
 from ...ports.config_provider import ConfigProvider
 from ...ports.index_repository import IndexRepository
-from .tools import context, class_details, listing, search, source, usages, documentation, ecs, snippets, patterns
+from .tools import context, class_details, listing, search, source, usages, documentation, ecs, snippets, patterns, hierarchy, events, analysis
 
 def register_all_tools(app: FastMCP, config: ConfigProvider, repository: IndexRepository):
     """Registers all Prism tools with the FastMCP instance."""
@@ -16,3 +16,6 @@ def register_all_tools(app: FastMCP, config: ConfigProvider, repository: IndexRe
     ecs.register(app, config, repository)
     snippets.register(app, config, repository)
     patterns.register(app, config, repository)
+    hierarchy.register(app, config, repository)
+    events.register(app, config, repository)
+    analysis.register(app, config, repository)

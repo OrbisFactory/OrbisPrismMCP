@@ -76,3 +76,11 @@ class SqliteIndexRepository:
     def list_subpackages(self, db_path: Path, package_prefix: str | None = None) -> list[str]:
         with _db.connection(db_path) as conn:
             return _db.list_subpackages(conn, package_prefix)
+
+    def find_implementations(self, db_path: Path, target_name: str, limit: int = 100) -> list[dict]:
+        with _db.connection(db_path) as conn:
+            return _db.find_implementations(conn, target_name, limit)
+
+    def list_events(self, db_path: Path, limit: int = 100) -> dict:
+        with _db.connection(db_path) as conn:
+            return _db.list_events(conn, limit)

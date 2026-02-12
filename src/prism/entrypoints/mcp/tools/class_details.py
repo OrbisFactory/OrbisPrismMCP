@@ -21,6 +21,7 @@ def register(app: FastMCP, config: ConfigProvider, repository: IndexRepository):
         package: str | None = None,
         class_name: str | None = None,
         fqcn: str | None = None,
+        include_source: bool = False,
     ) -> str:
         norm_version = normalize_version(version)
         p = (package or "").strip()
@@ -35,7 +36,7 @@ def register(app: FastMCP, config: ConfigProvider, repository: IndexRepository):
         if not c:
             return json.dumps({"error": "missing_params", "message": "Provide class_name or fqcn."}, ensure_ascii=False)
         
-        data, err = app_get_class(config, repository, None, norm_version, p, c)
+        data, err = app_get_class(config, repository, None, norm_version, p, c, include_source=include_source)
         if err is not None:
             return json.dumps(err, ensure_ascii=False)
         return json.dumps({"version": norm_version, **data}, ensure_ascii=False)
@@ -55,24 +56,5 @@ def register(app: FastMCP, config: ConfigProvider, repository: IndexRepository):
     prism_get_method.__doc__ = i18n.t("mcp.tools.prism_get_method.description")
     app.tool()(prism_get_method)
 
-    def prism_get_hierarchy(
-        version: str,
-        package: str | None = None,
-        class_name: str | None = None,
-        fqcn: str | None = None,
-    ) -> str:
-        norm_version = normalize_version(version)
-        p = (package or "").strip()
-        c = (class_name or "").strip()
-        if (fqcn or "").strip():
-            parsed = parse_fqcn(fqcn)
-            if parsed:
-                p, c = parsed
-        if not p or not c:
-            return json.dumps({"error": "missing_params", "message": "Provide package and class_name, or fqcn."}, ensure_ascii=False)
-        
-        data = app_get_hierarchy(config, norm_version, p, c, None)
-        return json.dumps({"version": norm_version, **data}, ensure_ascii=False)
-
-    prism_get_hierarchy.__doc__ = i18n.t("mcp.tools.prism_get_hierarchy.description")
-    app.tool()(prism_get_hierarchy)
+    prism_get_method.__doc__ = i18n.t("mcp.tools.prism_get_method.description")
+    app.tool()(prism_get_method)
