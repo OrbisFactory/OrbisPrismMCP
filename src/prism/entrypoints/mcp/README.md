@@ -1,12 +1,75 @@
-# Orbis Prism MCP Server
-
 This entrypoint defines the **Model Context Protocol (MCP)** server for Orbis Prism. It allows AI agents (like Cursor, Claude Desktop, etc.) to intelligently query the Hytale API indexed by the project.
+
+## 🚀 Running the Server
+
+You can start the server directly from the root of the project:
+
+```bash
+python main.py mcp [OPTIONS]
+```
+
+> [!TIP]
+> **Interactive Helper**: If you run `python main.py mcp` directly in your terminal, the server identifies it's not being called by an AI agent and prints a helpful guide with the exact **Command**, **Arguments**, and **Working Directory** you need to copy into your client's configuration.
+
+### Options:
+- `--http`, `-H`: Starts the server in **HTTP (SSE)** mode. By default, it uses **stdio**.
+- `--port`, `-p`: Specifies the port for HTTP mode (Default: `8000`).
+- `--host`: Specifies the host for HTTP mode (Default: `127.0.0.1`).
+- `--help`, `-h`: Shows the help message with all available options.
 
 ## 🔌 Connection
 
-By default, the server uses **stdio** transport. It can also be started in **HTTP (SSE)** mode for remote access.
+The server supports two main communication modes: **stdio** (direct) and **SSE** (remote).
 
-See the [main README](../../../README.md#configuring-the-mcp-server) for connection details in different clients.
+### 1. Direct Connection (stdio)
+Ideal for local development in AI agents like Cursor or Claude Desktop.
+
+**Antigravity Configuration Example:**
+```json
+"OrbisPrismMCP": {
+  "command": "C:\\path\\to\\python.exe",
+  "args": [
+    "C:\\path\\to\\OrbisPrismMCP\\main.py",
+    "mcp"
+  ],
+  "env": {
+    "PRISM_WORKSPACE": "C:\\path\\to\\OrbisPrismMCP"
+  },
+  "disabled": false
+}
+```
+
+**Cursor Configuration Example:**
+```json
+"OrbisPrismMCP": {
+  "type": "stdio",
+  "command": "python",
+  "args": [
+    "C:\\path\\to\\OrbisPrismMCP\\main.py",
+    "mcp"
+  ],
+  "env": {
+    "TRANSPORT": "stdio",
+    "PRISM_WORKSPACE": "C:\\path\\to\\OrbisPrismMCP"
+  }
+}
+```
+
+### 2. Remote Connection (SSE)
+Use this if the server is running on a different machine or inside Docker. Start the server with `python main.py mcp --http`.
+
+**Remote Configuration Example:**
+```json
+"OrbisPrismMCP-SSH": {
+  "command": "npx",
+  "args": [
+    "mcp-remote",
+    "http://127.0.0.1:8000/sse"
+  ],
+  "env": {},
+  "disabled": false
+}
+```
 
 ---
 
