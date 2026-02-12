@@ -72,3 +72,18 @@ class SqliteIndexRepository:
     def get_stats(self, db_path: Path) -> tuple[int, int, int]:
         with _db.connection(db_path) as conn:
             return _db.get_stats(conn)
+
+    def list_subpackages(self, db_path: Path, package_prefix: str | None = None) -> list[str]:
+        with _db.connection(db_path) as conn:
+            return _db.list_subpackages(conn, package_prefix)
+
+    def find_implementations(self, db_path: Path, target_name: str, limit: int = 100) -> list[dict]:
+        with _db.connection(db_path) as conn:
+            return _db.find_implementations(conn, target_name, limit)
+
+    def list_events(self, db_path: Path, limit: int = 100) -> dict:
+        with _db.connection(db_path) as conn:
+            return _db.list_events(conn, limit)
+    def find_systems_for_component(self, db_path: Path, component_name: str, limit: int = 100) -> list[dict]:
+        with _db.connection(db_path) as conn:
+            return _db.find_systems_for_component(conn, component_name, limit)

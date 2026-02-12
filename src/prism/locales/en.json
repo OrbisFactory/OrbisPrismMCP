@@ -145,5 +145,14 @@
   "cli.config.value_help": "Value to set for the key.",
   "cli.config.jadx_path_invalid": "The JADX path is not a valid file: {path}",
   "cli.config.jadx_path_set_success": "JADX path saved: {path}",
-  "cli.config.unknown_key": "Unknown configuration key: {key}"
+  "cli.config.unknown_key": "Unknown configuration key: {key}",
+  "mcp.tools.prism_explain_concept.description": "Provides a detailed explanation of a Hytale concept (e.g., 'ECS', 'Teleport').",
+  "mcp.tools.prism_find_system_for_component.description": "Searches for systems that process a specific component based on method parameters.",
+  "mcp.tools.prism_get_usage_snippet.description": "Retrieves a code snippet from a file around a specific string (e.g., class or method name).",
+  "mcp.tools.prism_detect_patterns.description": "Detects design patterns (Singleton, Factory, ECS) in a specific class.",
+  "mcp.tools.prism_list_packages.description": "Lists subpackages of the Hytale API. If package_prefix is provided, lists subpackages starting with that prefix. Useful for discovering project structure.",
+  "mcp.tools.prism_find_implementations.description": "Finds all classes that implement an interface or inherit from a specific class.",
+  "mcp.tools.prism_get_events.description": "Lists all defined events and subscriptions found in the Hytale system.",
+  "mcp.tools.prism_call_flow.description": "Analyzes who calls a method, grouping results by package and class for better clarity.",
+  "mcp.error.concept_not_found": "Concept '{concept}' not found in the local knowledge base. Try searching for related classes with 'prism_search'."
 }

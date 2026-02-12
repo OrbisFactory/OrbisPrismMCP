@@ -145,5 +145,14 @@
   "cli.config.value_help": "Valor a establecer para la clave.",
   "cli.config.jadx_path_invalid": "La ruta de JADX no es un archivo válido: {path}",
   "cli.config.jadx_path_set_success": "Ruta de JADX guardada: {path}",
-  "cli.config.unknown_key": "Clave de configuración desconocida: {key}"
+  "cli.config.unknown_key": "Clave de configuración desconocida: {key}",
+  "mcp.tools.prism_explain_concept.description": "Proporciona una explicación detallada de un concepto de Hytale (ej. 'ECS', 'Teleport').",
+  "mcp.tools.prism_find_system_for_component.description": "Busca sistemas que procesan una componente específica basándose en parámetros de métodos.",
+  "mcp.tools.prism_get_usage_snippet.description": "Obtiene un fragmento de código de un archivo alrededor de una cadena específica (ej. nombre de clase o método).",
+  "mcp.tools.prism_detect_patterns.description": "Detecta patrones de diseño (Singleton, Factory, ECS) en una clase específica.",
+  "mcp.tools.prism_find_implementations.description": "Busca todas las clases que implementan una interfaz o heredan de una clase específica.",
+  "mcp.tools.prism_get_events.description": "Lista todos los eventos definidos y las suscripciones encontradas en el sistema de Hytale.",
+  "mcp.tools.prism_call_flow.description": "Analiza quién llama a un método, agrupando los resultados por paquete y clase para mayor claridad.",
+  "mcp.tools.prism_list_packages.description": "Lista paquetes de la API de Hytale. Si se proporciona package_prefix, lista subpaquetes que comiencen por ese prefijo. Útil para descubrir la estructura del proyecto.",
+  "mcp.error.concept_not_found": "Concepto '{concept}' no encontrado en la base de conocimientos local. Intenta buscar clases relacionadas con 'prism_search'."
 }

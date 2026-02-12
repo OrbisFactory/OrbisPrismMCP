@@ -15,6 +15,7 @@ def register(app: FastMCP, config: ConfigProvider, repository: IndexRepository):
         version: str = "release",
         limit: int = 30,
         package_prefix: str | None = None,
+        layer: str | None = None,
         kind: str | None = None,
         unique_classes: bool = False,
     ) -> str:
@@ -23,15 +24,27 @@ def register(app: FastMCP, config: ConfigProvider, repository: IndexRepository):
         
         limit = max(1, min(int(limit), 500)) if limit is not None else 30
         norm_version = normalize_version(version)
+
+        #_ Layer mapping to packages
+        layer_map = {
+            "core": "com.hypixel.hytale.server.core",
+            "plugins": "com.hypixel.hytale.builtin",
+            "npc": "com.hypixel.hytale.server.npc",
+            "ui": "com.hypixel.hytale.server.core.ui"
+        }
+        
+        effective_prefix = package_prefix
+        if layer and layer.lower() in layer_map:
+            effective_prefix = layer_map[layer.lower()]
         
         results, err = app_search_api(
             config,
             repository,
             None,
             norm_version,
-            query.strip(),
+            query.strip(), #_ app_search_api will call sanitize_fts_query
             limit=limit,
-            package_prefix=package_prefix or None,
+            package_prefix=effective_prefix,
             kind=kind or None,
             unique_classes=unique_classes,
             t=i18n.t,

@@ -14,9 +14,11 @@ def get_class(
     version: str,
     package: str,
     class_name: str,
+    include_source: bool = False,
 ) -> tuple[dict | None, dict | None]:
     """Return (class_data, None) or (None, error_dict)."""
     from ..domain.constants import normalize_version
+    from .read_source import read_source
 
     root = root or config_provider.get_project_root()
     version = normalize_version(version)
@@ -35,6 +37,12 @@ def get_class(
             return (None, {"error": "not_found", "message": message, "suggestions": suggestions})
         
         return (None, {"error": "not_found", "message": f"Class {package}.{class_name} not found."})
+    
+    if include_source:
+        source_data = read_source(config_provider, root, version, data["file_path"])
+        if "content" in source_data:
+            data["full_source"] = source_data["content"]
+            
     return (data, None)
 
 
@@ -121,3 +129,23 @@ def get_context_list(config_provider: "ConfigProvider", root: Path | None) -> di
         if config_provider.get_db_path(root, v).is_file()
     ]
     return {"indexed": indexed, "active": active}
+
+
+def list_packages(
+    config_provider: "ConfigProvider",
+    index_repository: "IndexRepository",
+    root: Path | None,
+    version: str,
+    package_prefix: str | None = None,
+) -> tuple[list[str] | None, dict | None]:
+    """Return (packages_list, None) or (None, error_dict)."""
+    from ..domain.constants import normalize_version
+
+    root = root or config_provider.get_project_root()
+    version = normalize_version(version)
+    db_path = config_provider.get_db_path(root, version)
+    if not db_path.is_file():
+        return (None, {"error": "no_db", "message": f"Database for version {version} does not exist."})
+    
+    packages = index_repository.list_subpackages(db_path, package_prefix)
+    return (packages, None)
