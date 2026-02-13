@@ -16,7 +16,7 @@ temp/
 # Workspace: no versionar descompilado ni DB ni JARs
 workspace/decompiled/
 workspace/decompiled_raw/
-workspace/db/*.db
+workspace/db/
 workspace/server/*.jar
 workspace/server/**/*.jar
 workspace/bin
