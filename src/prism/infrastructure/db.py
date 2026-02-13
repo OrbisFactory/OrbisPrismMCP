@@ -85,7 +85,42 @@ def init_schema(conn: sqlite3.Connection) -> None:
             params,
             const_name,
             const_value,
+            snippet,
             tokenize='unicode61'
+        )
+    """)
+    conn.commit()
+
+
+def init_assets_schema(conn: sqlite3.Connection) -> None:
+    """
+    Creates tables for assets (metadata and FTS).
+    """
+    conn.execute("DROP TABLE IF EXISTS assets_fts")
+    conn.execute("DROP TABLE IF EXISTS assets")
+    
+    conn.execute("""
+        CREATE TABLE assets (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            path TEXT NOT NULL UNIQUE,
+            extension TEXT NOT NULL,
+            size INTEGER NOT NULL,
+            category TEXT,
+            internal_id TEXT,
+            width INTEGER,
+            height INTEGER,
+            metadata TEXT,
+            version TEXT NOT NULL
+        )
+    """)
+    
+    conn.execute("""
+        CREATE VIRTUAL TABLE assets_fts USING fts5(
+            path,
+            category,
+            internal_id,
+            metadata,
+            tokenize='trigram'
         )
     """)
     conn.commit()
@@ -163,11 +198,12 @@ def insert_fts_row(
     params: str | None = None,
     const_name: str | None = None,
     const_value: str | None = None,
+    snippet: str | None = None,
 ) -> None:
     """Inserts a row into the FTS5 table to make it searchable."""
     conn.execute(
-        "INSERT INTO api_fts (package, class_name, kind, method_name, returns, params, const_name, const_value) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-        (package, class_name, kind, method_name, returns, params, const_name, const_value),
+        "INSERT INTO api_fts (package, class_name, kind, method_name, returns, params, const_name, const_value, snippet) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (package, class_name, kind, method_name, returns, params, const_name, const_value, snippet),
     )
 
 
@@ -331,10 +367,14 @@ def search_fts(
     """Searches in the FTS5 table api_fts. unique_classes: one entry per class with method_count."""
     if not query_term or not query_term.strip():
         return []
-    term = query_term.strip()
+    from . import search_utils
+    term = search_utils.sanitize_fts_query(query_term)
+    
     fetch_limit = limit * 20 if unique_classes else limit
     sql = """SELECT api_fts.package, api_fts.class_name, api_fts.kind, api_fts.method_name,
-             api_fts.returns, api_fts.params, api_fts.const_name, api_fts.const_value, c.file_path
+             api_fts.returns, api_fts.params, api_fts.const_name, api_fts.const_value,
+             api_fts.snippet, c.file_path,
+             api_fts.rank
              FROM api_fts JOIN classes c ON c.package = api_fts.package AND c.class_name = api_fts.class_name
              WHERE api_fts MATCH ?"""
     params: list = [term]
@@ -346,6 +386,7 @@ def search_fts(
     if kind and kind.strip():
         sql += " AND api_fts.kind = ?"
         params.append(kind.strip().lower())
+    sql += " ORDER BY api_fts.rank"
     sql += " LIMIT ?"
     params.append(fetch_limit)
     cur = conn.execute(sql, params)
@@ -445,5 +486,50 @@ def find_systems_for_component(conn: sqlite3.Connection, component_name: str, li
            ORDER BY c.package, c.class_name
            LIMIT ?""",
         (f"%{component_name}%", limit),
+    )
+    return [dict(r) for r in cur.fetchall()]
+
+
+def insert_asset(
+    conn: sqlite3.Connection,
+    path: str,
+    extension: str,
+    size: int,
+    category: str | None,
+    internal_id: str | None,
+    width: int | None,
+    height: int | None,
+    metadata: str | None,
+    version: str
+) -> None:
+    """Inserts an asset into assets and assets_fts tables."""
+    conn.execute(
+        """INSERT OR REPLACE INTO assets 
+           (path, extension, size, category, internal_id, width, height, metadata, version) 
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        (path, extension, size, category, internal_id, width, height, metadata, version)
+    )
+    conn.execute(
+        "INSERT INTO assets_fts (path, category, internal_id, metadata) VALUES (?, ?, ?, ?)",
+        (path, category, internal_id, metadata)
+    )
+
+
+def search_assets_fts(conn: sqlite3.Connection, query_term: str, limit: int = 50) -> list[dict]:
+    """Searches assets using FTS5."""
+    if not query_term or not query_term.strip():
+        return []
+    
+    from . import search_utils
+    term = search_utils.sanitize_fts_query(query_term)
+    
+    cur = conn.execute(
+        """SELECT a.path, a.extension, a.size, a.category, a.internal_id, a.width, a.height, a.metadata, a.version
+           FROM assets a
+           JOIN assets_fts f ON a.path = f.path
+           WHERE assets_fts MATCH ?
+           ORDER BY f.rank
+           LIMIT ?""",
+        (term, limit)
     )
     return [dict(r) for r in cur.fetchall()]

@@ -41,6 +41,7 @@ class SqliteIndexRepository:
                 "params": r["params"],
                 "const_name": r["const_name"],
                 "const_value": r["const_value"],
+                "snippet": r["snippet"],
                 "file_path": r["file_path"],
             }
             for r in rows

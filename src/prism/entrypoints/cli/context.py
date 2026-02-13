@@ -17,8 +17,9 @@ from ...infrastructure import decompile
 from ...infrastructure import detection
 from ...infrastructure import extractor
 from ...infrastructure import file_config
-from ...infrastructure import prune
 from ...infrastructure import workspace_cleanup
+from ...infrastructure import sqlite_assets_repository
+from ...application import assets_use_cases
 
 from . import out
 
@@ -26,10 +27,10 @@ from . import out
 app = typer.Typer(help=i18n.t("cli.context.help"))
 
 def _ensure_dirs(root: Path) -> None:
-    """Ensures that the workspace, decompiled, db, and logs directories exist."""
+    """Ensures that the workspace, sources, db, and logs directories exist."""
     config_impl.get_workspace_dir(root).mkdir(parents=True, exist_ok=True)
-    (config_impl.get_workspace_dir(root) / "server").mkdir(parents=True, exist_ok=True)
-    config_impl.get_decompiled_dir(root).mkdir(parents=True, exist_ok=True)
+    #_ server dir is not used, avoiding creation
+    config_impl.get_sources_dir(root).mkdir(parents=True, exist_ok=True)
     config_impl.get_db_dir(root).mkdir(parents=True, exist_ok=True)
     (root / "logs").mkdir(parents=True, exist_ok=True)
 
@@ -102,8 +103,10 @@ def init_cmd(
     ctx: typer.Context,
     version: Annotated[Optional[str], typer.Argument(help=i18n.t("cli.init.version_help"))] = None,
     all_versions: Annotated[bool, typer.Option("--all", "-a", help=i18n.t("cli.init.all_help"))] = False,
+    include_assets: Annotated[bool, typer.Option("--assets", help=i18n.t("cli.init.assets_help"))] = False,
+    engine: Annotated[Optional[str], typer.Option("--engine", "-e", help=i18n.t("cli.context.engine_help"))] = None,
 ) -> int:
-    """Full pipeline: detects, decompiles, prunes, and indexes."""
+    """Full pipeline: detects, decompiles, and indexes."""
     root: Path = ctx.obj["root"]
     
     if _cmd_init_logic(root) != 0:
@@ -125,26 +128,28 @@ def init_cmd(
         out.error(i18n.t("cli.decompile.no_jar"))
         return 1
 
-    out.phase(i18n.t("cli.build.phase_decompile"))
+    engine_name = engine or config_impl.get_decompiler_engine_name(root)
+    out.phase(i18n.t("cli.build.phase_decompile", engine=engine_name))
+    out.warn(i18n.t("cli.decompile.may_take"))
     
-    #_ run_decompile_only already handles its own Progress bar, we avoid nesting out.status to prevent flickering
-    success, err = decompile.run_decompile_only(root, versions=versions_list)
+    #_ run_decompile_only already handles its own Progress bar
+    success, result = decompile.run_decompile_only(root, versions=versions_list, engine_name=engine)
     
     if not success:
         out.error(i18n.t("cli.build.decompile_failed"))
-        out.error(i18n.t(f"cli.decompile.{err}"))
+        out.error(i18n.t(f"cli.decompile.{result}"))
         return 1
+    
+    #_ Show summary
+    if isinstance(result, list):
+        for stats in result:
+            out.success(i18n.t("cli.decompile.success_stats", 
+                               files=stats["total_files"], 
+                               time=f"{stats['elapsed_time']:.1f}s"))
+    
     out.phase(i18n.t("cli.build.phase_decompile_done"))
 
-    out.phase(i18n.t("cli.build.phase_prune"))
-    #_ run_prune_only already handles its own Progress bar
-    success, err = prune.run_prune_only(root, versions=versions_list)
-
-    if not success:
-        out.error(i18n.t("cli.prune." + err))
-        return 1
-    out.phase(i18n.t("cli.prune.completed_all"))
-
+    #_ Prune step skipped (integrated in decompile)
 
     out.phase(i18n.t("cli.build.phase_index"))
     for v in versions_list:
@@ -158,6 +163,26 @@ def init_cmd(
         else:
             out.error(i18n.t("cli.index.db_error"))
             return 1
+
+    if include_assets:
+        out.phase(i18n.t("cli.build.phase_assets"))
+        repo = sqlite_assets_repository.SqliteAssetsRepository()
+        use_cases = assets_use_cases.AssetsUseCases(repo)
+        for v in versions_list:
+            assets_zip = config_impl.get_assets_zip_path(root, v)
+            if not assets_zip:
+                out.phase(i18n.t("cli.assets.not_found", version=v))
+                continue
+            
+            db_path = config_impl.get_assets_db_path(root, v)
+            with out.progress() as p:
+                task = p.add_task(i18n.t("cli.assets.indexing", version=v), total=None, filename="")
+                def progress(path, current, total):
+                    p.update(task, completed=current, total=total, filename=f" [cyan]{Path(path).name}[/cyan]")
+                
+                use_cases.index_assets(db_path, assets_zip, v, progress)
+            out.success(i18n.t("cli.assets.success", version=v))
+
     out.success(i18n.t("cli.build.success"))
     return 0
 
@@ -213,50 +238,40 @@ def reset_cmd(
 def decompile_cmd(
     ctx: typer.Context,
     version: Annotated[Optional[str], typer.Argument(help="Specific version to decompile (release, prerelease), or 'all'.")] = None,
+    engine: Annotated[Optional[str], typer.Option("--engine", "-e", help=i18n.t("cli.context.engine_help"))] = None,
 ) -> int:
-    """JADX only → decompiled_raw (without pruning)."""
+    """Decompiles the JAR directly into workspace/sources."""
     root: Path = ctx.obj["root"]
     if version is not None and version != "all" and version not in VALID_SERVER_VERSIONS:
         out.error(i18n.t("cli.context.use.invalid"))
         return 1
     
     versions = _resolve_context_versions(root, version, default_to_all=False)
-
-    #_ Removed nested out.status
-    success, err = decompile.run_decompile_only(root, versions=versions)
-
-    if success:
-        out.success(i18n.t("cli.decompile.success"))
-        return 0
-    out.error(i18n.t(f"cli.decompile.{err}"))
-    return 1
-
-
-@app.command(name="prune", help=i18n.t("cli.help.context_prune_desc"))
-def prune_cmd(
-    ctx: typer.Context,
-    version: Annotated[Optional[str], typer.Argument(help="Specific version to prune (release, prerelease), or 'all'.")] = None,
-) -> int:
-    """Pruning only (raw → decompiled)."""
-    root: Path = ctx.obj["root"]
-    if version is not None and version != "all" and version not in VALID_SERVER_VERSIONS:
-        out.error(i18n.t("cli.context.use.invalid"))
+    if not versions:
+        out.error(i18n.t("cli.decompile.no_jar"))
         return 1
 
-    versions = _resolve_context_versions(root, version, default_to_all=False)
+    engine_name = engine or config_impl.get_decompiler_engine_name(root)
+    out.phase(i18n.t("cli.build.phase_decompile", engine=engine_name))
+    out.warn(i18n.t("cli.decompile.may_take"))
     
-    out.phase(i18n.t("cli.prune.pruning"))
     #_ Removed nested out.status
-    success, err = prune.run_prune_only(root, versions=versions)
+    success, result = decompile.run_decompile_only(root, versions=versions, engine_name=engine)
 
     if success:
-        if version:
-            out.success(i18n.t("cli.prune.success", version=version))
+        if isinstance(result, list):
+            for stats in result:
+                out.success(i18n.t("cli.decompile.success_stats", 
+                                   files=stats["total_files"], 
+                                   time=f"{stats['elapsed_time']:.1f}s"))
         else:
-            out.success(i18n.t("cli.prune.completed_all"))
+            out.success(i18n.t("cli.decompile.success"))
         return 0
-    out.error(i18n.t(f"cli.prune.{err}"))
+    out.error(i18n.t(f"cli.decompile.{result}"))
     return 1
+
+
+    #_ Prune command removed as it is no longer necessary.
 
 
 @app.command(name="db", help=i18n.t("cli.help.context_db_desc"))
@@ -339,4 +354,33 @@ def use_cmd(
     return 0
 
 
-# The run_context function is removed because Typer handles dispatching.
+@app.command(name="assets", help=i18n.t("cli.help.context_assets_desc"))
+def assets_cmd(
+    ctx: typer.Context,
+    version: Annotated[Optional[str], typer.Argument(help="Specific version to index assets (release, prerelease), or 'all'.")] = None,
+) -> int:
+    """Indexes assets from Assets.zip."""
+    root: Path = ctx.obj["root"]
+    versions = _resolve_context_versions(root, version, default_to_all=False)
+    if not versions:
+        out.error(i18n.t("cli.decompile.no_jar"))
+        return 1
+
+    repo = sqlite_assets_repository.SqliteAssetsRepository()
+    use_cases = assets_use_cases.AssetsUseCases(repo)
+    
+    for v in versions:
+        assets_zip = config_impl.get_assets_zip_path(root, v)
+        if not assets_zip:
+            out.error(i18n.t("cli.assets.not_found", version=v))
+            continue
+        
+        db_path = config_impl.get_assets_db_path(root, v)
+        with out.progress() as p:
+            task = p.add_task(i18n.t("cli.assets.indexing", version=v), total=None, filename="")
+            def progress(path, current, total):
+                p.update(task, completed=current, total=total, filename=f" [cyan]{Path(path).name}[/cyan]")
+            
+            use_cases.index_assets(db_path, assets_zip, v, progress)
+        out.success(i18n.t("cli.assets.success", version=v))
+    return 0

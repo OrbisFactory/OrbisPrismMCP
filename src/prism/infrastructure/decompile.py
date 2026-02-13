@@ -14,7 +14,6 @@ import zipfile
 
 from . import config_impl
 from . import jar_downloader
-from . import prune
 from ..entrypoints.cli import out
 
 
@@ -31,107 +30,224 @@ def check_java() -> bool:
         return False
 
 
-def run_jadx(
-    jar_path: Path,
-    out_dir: Path,
-    jadx_jar: Path,
-    log_path: Path | None = None,
-) -> tuple[bool, bool]:
-    """
-    Runs JADX on the JAR and writes the output to out_dir.
-    Returns (True, had_errors).
-    """
-    if out_dir.exists():
-        shutil.rmtree(out_dir)
-    out_dir.mkdir(parents=True, exist_ok=True)
-    
-    #_ JADX optimization: Use native threads for better performance
-    cpu_cores = os.cpu_count() or 4
-    
-    #_ JVM + JADX Flags
-    #_ -Xmx4G: Required for large Hytale class pools
-    #_ -Djava.awt.headless=true: Force no-UI mode
-    #_ -cp + JadxCLI: Explicitly bypass GUI entry point
-    #_ --threads-count: Native parallelism
-    #_ --show-bad-code: Fidelity
-    #_ --no-res: Skip assets (faster)
-    #_ --comments-level none: Cleaner source
-    cmd = [
-        "java",
-        "-Xmx4G",
-        "-Djava.awt.headless=true",
-        "-XX:+UseParallelGC",
-        "-cp", str(jadx_jar.resolve()),
-        "jadx.cli.JadxCLI",
-        str(jar_path.resolve()),
-        "-d", str(out_dir.resolve()),
-        "--threads-count", str(cpu_cores),
-        "--show-bad-code",
-        "--no-res",
-        "--comments-level", "none",
-    ]
-    
-    #_ Count total classes in JAR to have a progress target
-    total_classes = 0
-    try:
-        with zipfile.ZipFile(jar_path, 'r') as z:
-            total_classes = sum(1 for f in z.namelist() if f.endswith(".class"))
-    except:
-        total_classes = 1000 #_ Fallback
-    
-    try:
-        if log_path:
-            log_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(log_path, "w", encoding="utf-8") as f:
-                f.write(f"Command: {' '.join(cmd)}\n\n")
+class DecompilerEngine:
+    """Base class for decompiler engines."""
+    def run(self, jar_path: Path, out_dir: Path, decompiler_jar: Path, log_path: Path | None = None) -> tuple[bool, dict | None]:
+        raise NotImplementedError
 
-        with out.progress() as progress:
-            task = progress.add_task("[cyan]Decompiling with JADX", total=total_classes)
-            
-            proc = subprocess.Popen(
-                cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                text=True,
-                encoding="utf-8",
-                errors="replace",
-            )
-            
-            #_ Monitoring loop to update progress bar based on files produced
-            full_output = []
-            while proc.poll() is None:
-                #_ Count .java files in out_dir
-                count = sum(1 for _ in out_dir.rglob("*.java"))
-                progress.update(task, completed=count)
-                
-                #_ Non-blocking read of stdout
-                line = proc.stdout.readline()
-                if line:
-                    full_output.append(line)
-                
-                time.sleep(1) #_ Check every second
-            
-            #_ Catch remaining output
-            remaining = proc.stdout.read()
-            if remaining:
-                full_output.append(remaining)
-            
-            stdout = "".join(full_output)
-            
+    def create_slim_jar(self, input_jar: Path, output_jar: Path) -> bool:
+        """Creates a temporary JAR containing only core Hytale packages."""
+        #_ Optimization: Use cache if input JAR hasn't changed
+        if output_jar.exists() and output_jar.stat().st_mtime > input_jar.stat().st_mtime:
+            return True
+
+        try:
+            with zipfile.ZipFile(input_jar, 'r') as zin:
+                #_ Use ZIP_STORED (no compression) for extreme speed. 
+                #_ Compilers/Decompilers don't care, and we save CPU.
+                with zipfile.ZipFile(output_jar, 'w', compression=zipfile.ZIP_STORED) as zout:
+                    for item in zin.infolist():
+                        #_ Only copy core packages (com/hypixel/hytale and com/hypixel/fastutil)
+                        is_core = any(item.filename.startswith(p) for p in config_impl.CORE_PACKAGE_PATHS)
+                        if is_core:
+                            #_ writestr with ZIP_STORED is basically a byte copy.
+                            zout.writestr(item, zin.read(item.filename))
+            return True
+        except Exception as e:
+            print(f"Error creating slim JAR: {e}", file=sys.stderr)
+            return False
+
+class JadxEngine(DecompilerEngine):
+    def run(self, jar_path: Path, out_dir: Path, decompiler_jar: Path, log_path: Path | None = None) -> tuple[bool, dict | None]:
+        if out_dir.exists():
+            shutil.rmtree(out_dir)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        
+        cpu_cores = os.cpu_count() or 4
+        cmd = [
+            "java",
+            "-Xmx4G",
+            "-Djava.awt.headless=true",
+            "-XX:+UseParallelGC",
+            "-cp", str(decompiler_jar.resolve()),
+            "jadx.cli.JadxCLI",
+            str(jar_path.resolve()),
+            "-d", str(out_dir.resolve()),
+            "--threads-count", str(cpu_cores),
+            "--show-bad-code",
+            "--no-res",
+            "--comments-level", "none",
+        ]
+        
+        total_classes = 0
+        try:
+            with zipfile.ZipFile(jar_path, 'r') as z:
+                total_classes = sum(1 for f in z.namelist() if f.endswith(".class") and "$" not in f)
+        except:
+            total_classes = 1000
+        
+        start_time = time.time()
+        try:
             if log_path:
-                with open(log_path, "a", encoding="utf-8") as f:
-                    f.write(stdout)
-                    f.write(f"\n--- exit code: {proc.returncode} ---\n")
+                log_path.parent.mkdir(parents=True, exist_ok=True)
+                with open(log_path, "w", encoding="utf-8") as f:
+                    f.write(f"Command: {' '.join(cmd)}\n\n")
 
-        return (True, proc.returncode != 0)
-    except Exception as e:
-        print(f"JADX execution failed: {e}", file=sys.stderr)
-        return (False, False)
+            with out.progress() as progress:
+                task = progress.add_task("[cyan]Decompiling with JADX", total=total_classes, filename="")
+                
+                proc = subprocess.Popen(
+                    cmd,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                    encoding="utf-8",
+                    errors="replace",
+                )
+                
+                full_output = []
+                while proc.poll() is None:
+                    count = sum(1 for _ in out_dir.rglob("*.java"))
+                    progress.update(task, completed=count)
+                    
+                    line = proc.stdout.readline()
+                    if line:
+                        full_output.append(line)
+                    
+                    time.sleep(1)
+                
+                remaining = proc.stdout.read()
+                if remaining:
+                    full_output.append(remaining)
+                
+                stdout = "".join(full_output)
+                if log_path:
+                    with open(log_path, "a", encoding="utf-8") as f:
+                        f.write(stdout)
+                        f.write(f"\n--- exit code: {proc.returncode} ---\n")
+
+            elapsed = time.time() - start_time
+            total_files = sum(1 for _ in out_dir.rglob("*.java"))
+            
+            return (True, {
+                "had_errors": proc.returncode != 0,
+                "total_files": total_files,
+                "elapsed_time": elapsed
+            })
+        except Exception as e:
+            print(f"JADX execution failed: {e}", file=sys.stderr)
+            return (False, None)
+
+class VineflowerEngine(DecompilerEngine):
+    def run(self, jar_path: Path, out_dir: Path, decompiler_jar: Path, log_path: Path | None = None) -> tuple[bool, dict | None]:
+        if out_dir.exists():
+            shutil.rmtree(out_dir)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        
+        cpu_cores = os.cpu_count() or 4
+        cmd = [
+            "java",
+            "-Xmx4G",
+            "-Djava.awt.headless=true",
+            "-XX:+UseParallelGC",
+            "-jar", str(decompiler_jar.resolve()),
+            f"--threads={cpu_cores}",
+            "--rsy=1",
+            "--dgs=1",
+            str(jar_path.resolve()),
+            str(out_dir.resolve()),
+        ]
+        
+        total_classes = 0
+        try:
+            with zipfile.ZipFile(jar_path, 'r') as z:
+                total_classes = sum(1 for f in z.namelist() if f.endswith(".class") and "$" not in f)
+        except:
+            total_classes = 1000
+            
+        start_time = time.time()
+        try:
+            if log_path:
+                log_path.parent.mkdir(parents=True, exist_ok=True)
+                with open(log_path, "w", encoding="utf-8") as f:
+                    f.write(f"Command: {' '.join(cmd)}\n\n")
+
+            with out.progress() as progress:
+                task = progress.add_task("[magenta]Decompiling with Vineflower", total=total_classes, filename="")
+                
+                proc = subprocess.Popen(
+                    cmd,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                    encoding="utf-8",
+                    errors="replace",
+                    bufsize=1  #_ Line buffered
+                )
+                
+                full_output = []
+                import threading
+                import queue
+                
+                #_ Queue to pass lines from thread to main loop
+                q = queue.Queue()
+                
+                def reader_thread():
+                    for line in iter(proc.stdout.readline, ''):
+                        q.put(line)
+                    proc.stdout.close()
+                
+                t = threading.Thread(target=reader_thread, daemon=True)
+                t.start()
+                
+                while t.is_alive() or not q.empty():
+                    #_ Check for new files (progress)
+                    count = sum(1 for _ in out_dir.rglob("*.java"))
+                    progress.update(task, completed=count)
+                    
+                    #_ Process output lines without blocking the UI
+                    try:
+                        while True:
+                            line = q.get_nowait()
+                            full_output.append(line)
+                    except queue.Empty:
+                        pass
+                    
+                    time.sleep(0.5) #_ Update every 500ms
+                
+                proc.wait()
+                
+                stdout = "".join(full_output)
+                if log_path:
+                    with open(log_path, "a", encoding="utf-8") as f:
+                        f.write(stdout)
+                        f.write(f"\n--- exit code: {proc.returncode} ---\n")
+
+            elapsed = time.time() - start_time
+            total_files = sum(1 for _ in out_dir.rglob("*.java"))
+            
+            return (True, {
+                "had_errors": proc.returncode != 0,
+                "total_files": total_files,
+                "elapsed_time": elapsed
+            })
+        except Exception as e:
+            print(f"Vineflower execution failed: {e}", file=sys.stderr)
+            return (False, None)
+
+def get_engine(name: str) -> DecompilerEngine:
+    if name.lower() == "vineflower":
+        return VineflowerEngine()
+    return JadxEngine()
 
 
-def run_decompile_only_for_version(root: Path | None, version: str) -> tuple[bool, str]:
+def run_decompile_only_for_version(
+    root: Path | None, 
+    version: str, 
+    engine_name: str | None = None
+) -> tuple[bool, str | dict]:
     """
-    Runs Vineflower only for a version. Returns (True, "") or (False, err_key).
+    Runs decompiler for a version. Returns (True, stats_dict) or (False, err_key).
     """
     root = root or config_impl.get_project_root()
     if version == "release":
@@ -145,73 +261,57 @@ def run_decompile_only_for_version(root: Path | None, version: str) -> tuple[boo
     if not check_java():
         return (False, "java_not_found")
 
-    jadx_jar = jar_downloader.ensure_jadx(root)
-    if not jadx_jar:
-        return (False, "no_jadx")
+    #_ Select engine
+    engine_name = engine_name or config_impl.get_decompiler_engine_name(root)
+    engine = get_engine(engine_name)
+    
+    #_ Ensure decompiler JAR
+    if engine_name == "vineflower":
+        decompiler_jar = jar_downloader.ensure_vineflower(root)
+        err_key = "no_vineflower"
+    else:
+        decompiler_jar = jar_downloader.ensure_jadx(root)
+        err_key = "no_jadx"
+        
+    if not decompiler_jar:
+        return (False, err_key)
 
-    raw_dir = config_impl.get_decompiled_raw_dir(root, version)
+    raw_dir = config_impl.get_sources_dir(root, version)
     raw_dir.mkdir(parents=True, exist_ok=True)
 
     logs_dir = config_impl.get_logs_dir(root)
     logs_dir.mkdir(parents=True, exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    log_path = logs_dir / f"decompile_{version}_{timestamp}.log"
+    log_path = logs_dir / f"decompile_{engine_name}_{version}_{timestamp}.log"
 
-    from .. import i18n
-    ok, had_errors = run_jadx(jar_path, raw_dir, jadx_jar, log_path)
+    #_ 1. Create slim JAR
+    slim_jar = raw_dir.parent / f"HytaleServer_{version}_slim.jar"
+    if not engine.create_slim_jar(jar_path, slim_jar):
+        return (False, "decompile_failed")
+
+    ok, stats = engine.run(slim_jar, raw_dir, decompiler_jar, log_path)
     if not ok:
         return (False, "decompile_failed")
-    
-    return (True, "")
+    return (True, stats)
 
 
 def run_decompile_only(
     root: Path | None = None,
     versions: list[str] | None = None,
-) -> tuple[bool, str]:
-    """Runs JADX only (without pruning)."""
+    engine_name: str | None = None
+) -> tuple[bool, str | list[dict]]:
+    """Runs decompiler only (without pruning)."""
     root = root or config_impl.get_project_root()
     if versions is None:
         versions = [config_impl.get_active_version(root)]
     
+    all_stats = []
     for version in versions:
-        ok, err = run_decompile_only_for_version(root, version)
+        ok, result = run_decompile_only_for_version(root, version, engine_name=engine_name)
         if not ok:
-            return (False, err)
-    return (True, "")
+            return (False, result)
+        all_stats.append(result)
+    return (True, all_stats)
 
 
-def run_decompile_and_prune_for_version(root: Path | None, version: str) -> tuple[bool, str]:
-    """Decompiles with JADX and prunes."""
-    ok, err = run_decompile_only_for_version(root, version)
-    if not ok:
-        return (False, err)
-
-    root = root or config_impl.get_project_root()
-    raw_dir = config_impl.get_decompiled_raw_dir(root, version)
-    decompiled_dir = config_impl.get_decompiled_dir(root, version)
-    
-    from . import i18n
-    ok_prune, stats = prune.prune_to_core(raw_dir, decompiled_dir)
-    if not ok_prune:
-        print(i18n.t("cli.prune.no_core", raw_dir=raw_dir), file=sys.stderr)
-        return (False, "prun_failed")
-    
-    print(i18n.t("cli.prune.done", files=stats["files"], dest=decompiled_dir, subdir=stats["source_subdir"]))
-    return (True, "")
-
-
-def run_decompile_and_prune(
-    root: Path | None = None,
-    versions: list[str] | None = None,
-) -> tuple[bool, str]:
-    """Decompiles and prunes one or more versions using JADX."""
-    root = root or config_impl.get_project_root()
-    if versions is None:
-        versions = [config_impl.get_active_version(root)]
-
-    for version in versions:
-        ok, err = run_decompile_and_prune_for_version(root, version)
-        if not ok:
-            return (False, err)
-    return (True, "")
+    return (True, all_stats)

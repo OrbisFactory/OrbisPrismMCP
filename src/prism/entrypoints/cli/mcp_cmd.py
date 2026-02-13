@@ -32,11 +32,11 @@ def mcp_callback(
             out.phase(i18n.t("cli.mcp.instructions_http_url", url=f"http://{host}:{port}/sse"))
         else:
             cwd = str(root.resolve())
-            command = sys.executable
-            args_str = "main.py mcp"
+            command = "prism"
+            args_str = "mcp"
             out.phase(i18n.t("cli.mcp.instructions_title"))
             out.phase(i18n.t("cli.mcp.instructions_intro"))
-            out.phase(i18n.t("cli.mcp.instructions_command", command=command))
+            out.phase(i18n.t("cli.mcp.instructions_command_global", command=command))
             out.phase(i18n.t("cli.mcp.instructions_args", args=args_str))
             out.phase(i18n.t("cli.mcp.instructions_cwd", cwd=cwd))
             out.phase(i18n.t("cli.mcp.instructions_ready"))

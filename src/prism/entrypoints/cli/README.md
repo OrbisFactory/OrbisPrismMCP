@@ -1,58 +1,52 @@
-# CLI Documentation — Orbis Prism
+# CLI Reference — Orbis Prism
 
-This directory implements the command-line interface for Orbis Prism. The entry point is `python main.py <command> [arguments]` from the project root.
+The primary entry point is the global `prism` command. For local development, you can use `python main.py`.
+
+## Global Options
+- **`--workspace` / `-w <PATH>`**: Explicitly set the Hytale project directory.
+- **`--help`**: Show available commands and options.
 
 ## `context` / `ctx` Commands
 
-This is the main group of commands for building and managing the API context.
+### `ctx init [VERSION]`
+Runs the full build pipeline (detect, decompile, index).
+- **Default Behavior**: Processes the **release** version.
+- **`--assets`**: Also indexes game assets (models, textures, metadata).
+- **`--engine <name>` / `-e`**: Select decompiler (`jadx` or `vineflower`).
+- **`--all` / `-a`**: Processes both `release` and `prerelease`.
 
-### `context init [VERSION]`
-Runs the full build pipeline (detect, decompile, prune, db).
-- **Default Behavior**: Processes only the **release** version.
-- **`--all` / `-a`**: Processes all configured versions (`release` and `prerelease`).
-- `[VERSION]`: Can be `release`, `prerelease`, or `all`.
+### `ctx assets <COMMAND>`
+Manage and search game assets metadata.
+- **`search <QUERY>`**: Fast FTS5 search for assets (e.g., `prism ctx assets search stone`).
+- **`index`**: Force a re-index of `Assets.zip`.
+- **`inspect <PATH>`**: (Used by MCP) Peek into an asset's content.
 
-### `context decompile [VERSION]`
-Runs only the JADX decompilation step.
-- **Default Behavior**: Processes only the **active** version.
-- `[VERSION]`: Can be `release`, `prerelease`, or `all`.
-
-### `context prune [VERSION]`
-Runs only the pruning step (raw → decompiled).
-- **Default Behavior**: Processes only the **active** version.
-- `[VERSION]`: Can be `release`, `prerelease`, or `all`.
-
-### `context db [VERSION]`
-Runs only the database indexing step.
-- **Default Behavior**: Processes only the **active** version.
-- `[VERSION]`: Can be `release`, `prerelease`, or `all`.
-
-### Other `context` Commands
-- **`detect`**: Detects the Hytale installation.
-- **`list`**: Lists indexed versions and the active one.
-- **`use <VERSION>`**: Sets the active version.
-- **`clean <TARGET>`**: Cleans artifacts. Asks for confirmation on `all`.
-- **`reset`**: Resets the project. Asks for confirmation.
+### Other `ctx` Commands
+- **`detect`**: Find `HytaleServer.jar`.
+- **`list`**: Show indexed versions and current active context.
+- **`use <VERSION>`**: Change the active version (`release`|`prerelease`).
+- **`clean <TARGET>`**: Remove `db`, `sources`, or `all` artifacts.
 
 ---
 
 ## `query` Command
 ```bash
-python main.py query <TERM> [OPTIONS]
+prism query <TERM> [OPTIONS]
 ```
-- **`<TERM>`**: The FTS5 search term.
+- **`<TERM>`**: FTS5 search for the Java API (classes, methods).
 - **Options**: `--version`, `--limit`, `--json`.
 
 ---
 
 ## `mcp` Command
 ```bash
-python main.py mcp [OPTIONS]
+prism mcp [OPTIONS]
 ```
-- **Options**: `--http`, `--port`, `--host`.
+- **Options**: `--port`, `--host`. Exposes API and Assets tools via Model Context Protocol.
 
 ---
 
-## Other Commands
-- **`lang list` / `lang set <CODE>`**: Manage language.
-- **`config set <KEY> <VALUE>`**: Set `game_path` or `jadx_path`.
+## Configuration & Language
+- **`lang set <en|es>`**: Change CLI language.
+- **`config set <KEY> <VALUE>`**: Manually configure `game_path` or `jadx_path`.
+- **`config decompiler <NAME>`**: Set default decompiler (`jadx` or `vineflower`).
