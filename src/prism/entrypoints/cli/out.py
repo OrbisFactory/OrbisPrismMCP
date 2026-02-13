@@ -62,16 +62,16 @@ def table(title: str, data: List[Dict[str, Any]], columns: List[str] | None = No
     _data_console.print(grid)
 
 @contextmanager
-def status(msg: str) -> Generator[None, None, None]:
+def status(msg: str) -> Generator[Any, None, None]:
     """
     Displays a spinner while a task is running (on stderr).
 
     Usage:
-        with out.status("Doing something..."):
-            time.sleep(2)
+        with out.status("Doing something...") as s:
+            s.update("Updating...")
     """
-    with _console.status(f"[cyan]{msg}[/cyan]", spinner="dots"):
-        yield
+    with _console.status(f"[cyan]{msg}[/cyan]", spinner="dots") as s:
+        yield s
 def progress() -> Progress:
     """
     Returns a standardized Progress instance configured for the CLI.
