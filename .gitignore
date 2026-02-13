@@ -14,12 +14,7 @@ temp/
 .agent/
 
 # Workspace: no versionar descompilado ni DB ni JARs
-workspace/decompiled/
-workspace/decompiled_raw/
-workspace/db/
-workspace/server/*.jar
-workspace/server/**/*.jar
-workspace/bin
+workspace/*
 
 # Config local (puede contener rutas absolutas)
 .prism.json

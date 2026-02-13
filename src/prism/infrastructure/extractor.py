@@ -120,10 +120,10 @@ def run_index(root: Path | None = None, version: str = "release") -> tuple[bool,
     (False, "no_decompiled") if no code; (False, "db_error") if DB fails.
     """
     root = root or config_impl.get_project_root()
-    decompiled_dir = config_impl.get_decompiled_dir(root, version)
-    if not decompiled_dir.is_dir():
+    sources_dir = config_impl.get_sources_dir(root, version)
+    if not sources_dir.is_dir():
         return (False, "no_decompiled")
-    java_files = list(decompiled_dir.rglob("*.java"))
+    java_files = list(sources_dir.rglob("*.java"))
     if not java_files:
         return (False, "no_decompiled")
 
@@ -144,7 +144,7 @@ def run_index(root: Path | None = None, version: str = "release") -> tuple[bool,
                     continue
                 #_ Relative path to the decompiled directory for storage
                 try:
-                    rel_path = jpath.relative_to(decompiled_dir)
+                    rel_path = jpath.relative_to(sources_dir)
                 except ValueError:
                     rel_path = jpath
                 file_path_str = str(rel_path).replace("\\", "/")

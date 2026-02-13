@@ -218,9 +218,9 @@ def get_assets_zip_path(root: Path | None = None, version: str = "release") -> P
     return assets_path if assets_path.exists() else None
 
 
-def get_decompiled_raw_dir(root: Path | None = None, version: str = "release") -> Path:
-    """Raw JADX directory for a version (before pruning)."""
-    return get_workspace_dir(root) / "decompiled_raw" / version
+def get_sources_dir(root: Path | None = None, version: str = "release") -> Path:
+    """Directory for decompiled Hytale sources."""
+    return get_workspace_dir(root) / "sources" / version
 
 
 def get_db_dir(root: Path | None = None) -> Path:

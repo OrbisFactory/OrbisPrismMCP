@@ -33,6 +33,10 @@ def error(msg: str) -> None:
     """Prints an error message to stderr (red)."""
     _console.print(f"[red]✖ {msg}[/red]", style="bold")
 
+def warn(msg: str) -> None:
+    """Prints a warning/info message to stderr (yellow)."""
+    _console.print(f"[yellow]! {msg}[/yellow]")
+
 def table(title: str, data: List[Dict[str, Any]], columns: List[str] | None = None) -> None:
     """
     Prints a list of dictionaries as a well-formatted table to stdout.

@@ -14,7 +14,6 @@ import zipfile
 
 from . import config_impl
 from . import jar_downloader
-from . import prune
 from ..entrypoints.cli import out
 
 
@@ -35,6 +34,28 @@ class DecompilerEngine:
     """Base class for decompiler engines."""
     def run(self, jar_path: Path, out_dir: Path, decompiler_jar: Path, log_path: Path | None = None) -> tuple[bool, dict | None]:
         raise NotImplementedError
+
+    def create_slim_jar(self, input_jar: Path, output_jar: Path) -> bool:
+        """Creates a temporary JAR containing only core Hytale packages."""
+        #_ Optimization: Use cache if input JAR hasn't changed
+        if output_jar.exists() and output_jar.stat().st_mtime > input_jar.stat().st_mtime:
+            return True
+
+        try:
+            with zipfile.ZipFile(input_jar, 'r') as zin:
+                #_ Use ZIP_STORED (no compression) for extreme speed. 
+                #_ Compilers/Decompilers don't care, and we save CPU.
+                with zipfile.ZipFile(output_jar, 'w', compression=zipfile.ZIP_STORED) as zout:
+                    for item in zin.infolist():
+                        #_ Only copy core packages (com/hypixel/hytale and com/hypixel/fastutil)
+                        is_core = any(item.filename.startswith(p) for p in config_impl.CORE_PACKAGE_PATHS)
+                        if is_core:
+                            #_ writestr with ZIP_STORED is basically a byte copy.
+                            zout.writestr(item, zin.read(item.filename))
+            return True
+        except Exception as e:
+            print(f"Error creating slim JAR: {e}", file=sys.stderr)
+            return False
 
 class JadxEngine(DecompilerEngine):
     def run(self, jar_path: Path, out_dir: Path, decompiler_jar: Path, log_path: Path | None = None) -> tuple[bool, dict | None]:
@@ -235,7 +256,7 @@ def run_decompile_only_for_version(
     if not decompiler_jar:
         return (False, err_key)
 
-    raw_dir = config_impl.get_decompiled_raw_dir(root, version)
+    raw_dir = config_impl.get_sources_dir(root, version)
     raw_dir.mkdir(parents=True, exist_ok=True)
 
     logs_dir = config_impl.get_logs_dir(root)
@@ -243,10 +264,14 @@ def run_decompile_only_for_version(
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     log_path = logs_dir / f"decompile_{engine_name}_{version}_{timestamp}.log"
 
-    ok, stats = engine.run(jar_path, raw_dir, decompiler_jar, log_path)
+    #_ 1. Create slim JAR
+    slim_jar = raw_dir.parent / f"HytaleServer_{version}_slim.jar"
+    if not engine.create_slim_jar(jar_path, slim_jar):
+        return (False, "decompile_failed")
+
+    ok, stats = engine.run(slim_jar, raw_dir, decompiler_jar, log_path)
     if not ok:
         return (False, "decompile_failed")
-    
     return (True, stats)
 
 
@@ -269,43 +294,4 @@ def run_decompile_only(
     return (True, all_stats)
 
 
-def run_decompile_and_prune_for_version(
-    root: Path | None, 
-    version: str, 
-    engine_name: str | None = None
-) -> tuple[bool, str | dict]:
-    """Decompiles and prunes."""
-    ok, result = run_decompile_only_for_version(root, version, engine_name=engine_name)
-    if not ok:
-        return (False, result)
-
-    root = root or config_impl.get_project_root()
-    raw_dir = config_impl.get_decompiled_raw_dir(root, version)
-    decompiled_dir = config_impl.get_decompiled_dir(root, version)
-    
-    from . import i18n
-    ok_prune, stats = prune.prune_to_core(raw_dir, decompiled_dir)
-    if not ok_prune:
-        print(i18n.t("cli.prune.no_core", raw_dir=raw_dir), file=sys.stderr)
-        return (False, "prun_failed")
-    
-    return (True, result)
-
-
-def run_decompile_and_prune(
-    root: Path | None = None,
-    versions: list[str] | None = None,
-    engine_name: str | None = None
-) -> tuple[bool, str | list[dict]]:
-    """Decompiles and prunes one or more versions."""
-    root = root or config_impl.get_project_root()
-    if versions is None:
-        versions = [config_impl.get_active_version(root)]
-
-    all_stats = []
-    for version in versions:
-        ok, result = run_decompile_and_prune_for_version(root, version, engine_name=engine_name)
-        if not ok:
-            return (False, result)
-        all_stats.append(result)
     return (True, all_stats)

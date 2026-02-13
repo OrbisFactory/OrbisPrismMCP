@@ -17,7 +17,6 @@ from ...infrastructure import decompile
 from ...infrastructure import detection
 from ...infrastructure import extractor
 from ...infrastructure import file_config
-from ...infrastructure import prune
 from ...infrastructure import workspace_cleanup
 from ...infrastructure import sqlite_assets_repository
 from ...application import assets_use_cases
@@ -28,10 +27,10 @@ from . import out
 app = typer.Typer(help=i18n.t("cli.context.help"))
 
 def _ensure_dirs(root: Path) -> None:
-    """Ensures that the workspace, decompiled, db, and logs directories exist."""
+    """Ensures that the workspace, sources, db, and logs directories exist."""
     config_impl.get_workspace_dir(root).mkdir(parents=True, exist_ok=True)
-    (config_impl.get_workspace_dir(root) / "server").mkdir(parents=True, exist_ok=True)
-    config_impl.get_decompiled_dir(root).mkdir(parents=True, exist_ok=True)
+    #_ server dir is not used, avoiding creation
+    config_impl.get_sources_dir(root).mkdir(parents=True, exist_ok=True)
     config_impl.get_db_dir(root).mkdir(parents=True, exist_ok=True)
     (root / "logs").mkdir(parents=True, exist_ok=True)
 
@@ -107,7 +106,7 @@ def init_cmd(
     include_assets: Annotated[bool, typer.Option("--assets", help=i18n.t("cli.init.assets_help"))] = False,
     engine: Annotated[Optional[str], typer.Option("--engine", "-e", help=i18n.t("cli.context.engine_help"))] = None,
 ) -> int:
-    """Full pipeline: detects, decompiles, prunes, and indexes."""
+    """Full pipeline: detects, decompiles, and indexes."""
     root: Path = ctx.obj["root"]
     
     if _cmd_init_logic(root) != 0:
@@ -131,6 +130,7 @@ def init_cmd(
 
     engine_name = engine or config_impl.get_decompiler_engine_name(root)
     out.phase(i18n.t("cli.build.phase_decompile", engine=engine_name))
+    out.warn(i18n.t("cli.decompile.may_take"))
     
     #_ run_decompile_only already handles its own Progress bar
     success, result = decompile.run_decompile_only(root, versions=versions_list, engine_name=engine)
@@ -149,15 +149,7 @@ def init_cmd(
     
     out.phase(i18n.t("cli.build.phase_decompile_done"))
 
-    out.phase(i18n.t("cli.build.phase_prune"))
-    #_ run_prune_only already handles its own Progress bar
-    success, err = prune.run_prune_only(root, versions=versions_list)
-
-    if not success:
-        out.error(i18n.t("cli.prune." + err))
-        return 1
-    out.phase(i18n.t("cli.prune.completed_all"))
-
+    #_ Prune step skipped (integrated in decompile)
 
     out.phase(i18n.t("cli.build.phase_index"))
     for v in versions_list:
@@ -248,7 +240,7 @@ def decompile_cmd(
     version: Annotated[Optional[str], typer.Argument(help="Specific version to decompile (release, prerelease), or 'all'.")] = None,
     engine: Annotated[Optional[str], typer.Option("--engine", "-e", help=i18n.t("cli.context.engine_help"))] = None,
 ) -> int:
-    """JADX only → decompiled_raw (without pruning)."""
+    """Decompiles the JAR directly into workspace/sources."""
     root: Path = ctx.obj["root"]
     if version is not None and version != "all" and version not in VALID_SERVER_VERSIONS:
         out.error(i18n.t("cli.context.use.invalid"))
@@ -261,6 +253,7 @@ def decompile_cmd(
 
     engine_name = engine or config_impl.get_decompiler_engine_name(root)
     out.phase(i18n.t("cli.build.phase_decompile", engine=engine_name))
+    out.warn(i18n.t("cli.decompile.may_take"))
     
     #_ Removed nested out.status
     success, result = decompile.run_decompile_only(root, versions=versions, engine_name=engine)
@@ -278,31 +271,7 @@ def decompile_cmd(
     return 1
 
 
-@app.command(name="prune", help=i18n.t("cli.help.context_prune_desc"))
-def prune_cmd(
-    ctx: typer.Context,
-    version: Annotated[Optional[str], typer.Argument(help="Specific version to prune (release, prerelease), or 'all'.")] = None,
-) -> int:
-    """Pruning only (raw → decompiled)."""
-    root: Path = ctx.obj["root"]
-    if version is not None and version != "all" and version not in VALID_SERVER_VERSIONS:
-        out.error(i18n.t("cli.context.use.invalid"))
-        return 1
-
-    versions = _resolve_context_versions(root, version, default_to_all=False)
-    
-    out.phase(i18n.t("cli.prune.pruning"))
-    #_ Removed nested out.status
-    success, err = prune.run_prune_only(root, versions=versions)
-
-    if success:
-        if version:
-            out.success(i18n.t("cli.prune.success", version=version))
-        else:
-            out.success(i18n.t("cli.prune.completed_all"))
-        return 0
-    out.error(i18n.t(f"cli.prune.{err}"))
-    return 1
+    #_ Prune command removed as it is no longer necessary.
 
 
 @app.command(name="db", help=i18n.t("cli.help.context_db_desc"))
