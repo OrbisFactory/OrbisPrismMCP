@@ -15,22 +15,21 @@
 
 ## 🚀 Quick Start
 
-1. **Clone & Install**
+1. **Install**
+   Install directly from your local clone or (futurely) from PyPI:
    ```bash
-   git clone https://github.com/OrbisFactory/OrbisPrismMCP.git
-   cd OrbisPrismMCP
-   pip install -r requirements.txt
+   pip install .
    ```
 
 2. **Initialize Workspace**
-   This command detects your Hytale installation, decompiles the server, and indexes the API.
+   This command detects your Hytale installation, decompiles the server, and indexes the API and **assets**.
    ```bash
-   python main.py ctx init
+   prism ctx init --assets
    ```
 
 3. **Start MCP Server**
    ```bash
-   python main.py mcp
+   prism mcp
    ```
 
 ---
@@ -39,8 +38,16 @@
 
 - **Official Hytale Installation** (Launcher and game files).
 - **Python 3.11+**
-- **Java 25** (Required for Hytale server compatibility).
-- *JADX is managed automatically by the internal pipeline.*
+- **Java 17-25** (Required for Hytale server compatibility and JADX).
+
+---
+
+## 🏛️ Project Features
+
+- **Global CLI**: Run `prism` from any directory.
+- **Deep Indexing**: Fast API search with SQLite FTS5.
+- **Asset Exploration**: Search and inspect Hytale assets (JSON, models, textures) directly from `Assets.zip`.
+- **AI-Ready**: Native MCP server for integration with Cursor, Claude, and more.
 
 ---
 
@@ -50,7 +57,7 @@ Detailed documentation is available for different areas of the project:
 
 - [**CLI Reference**](src/prism/entrypoints/cli/README.md) — Full command list and advanced usage.
 - [**MCP Server Guide**](src/prism/entrypoints/mcp/README.md) — How to connect Orbis Prism to Cursor, Claude, or other AI agents.
-- [**Agent Context & Architecture**](AGENTS.md) — Technical details for contributors and AI development.
+- [**Agent Context & Architecture**](Agents.md) — Technical details for contributors and AI development.
 - [**The Developer's Prism**](docs/PHILOSOPHY.md) — Our philosophy and purpose.
 - [**Contributing**](CONTRIBUTING.md) — Help us improve the tool.
 
@@ -61,8 +68,8 @@ Detailed documentation is available for different areas of the project:
 The CLI supports both **English** and **Spanish**. 
 
 ```bash
-python main.py lang set en  # Switch to English
-python main.py lang set es  # Cambiar a Español
+prism lang set en  # Switch to English
+prism lang set es  # Cambiar a Español
 ```
 
 ---

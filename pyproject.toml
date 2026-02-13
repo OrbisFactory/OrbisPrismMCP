@@ -12,6 +12,16 @@ license = {text = "MIT"}
 authors = [
     {name = "OrbisFactory"}
 ]
+keywords = ["hytale", "mcp", "modding", "decompiler", "analysis"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Operating System :: OS Independent",
+    "Topic :: Software Development :: Libraries :: Java Libraries",
+]
 dependencies = [
     "mcp>=1.0.0",
     "rich>=13.7.1",
