@@ -37,7 +37,7 @@
   "cli.init.attempting_detect": "No JAR in config. Attempting to detect HytaleServer.jar...",
   "cli.decompile.not_implemented": "Command 'decompile' not implemented yet. See Phase 1 of the plan.",
   "cli.decompile.success": "Decompilation completed. Code in workspace/decompiled.",
-  "cli.decompile.success_stats": "✔ Decompilation completed: {files} files in {time}.",
+  "cli.decompile.success_stats": "Decompilation completed: {files} files in {time}.",
   "cli.decompile.no_jar": "No JAR configured. Run 'ctx init' or 'config_impl set game_path <path>'.",
   "cli.decompile.no_jadx": "Error: Could not find or download JADX.",
   "cli.decompile.jadx_failed": "JADX failed. Check logs/decompile_*.log.",
