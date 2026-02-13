@@ -1,4 +1,0 @@
-# MCP (Model Context Protocol) - servidor para IA
-mcp>=1.0.0
-rich>=13.7.1
-typer[all]>=0.12.3
