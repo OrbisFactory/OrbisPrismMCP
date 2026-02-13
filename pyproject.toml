@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "orbis_prism_mcp"
-version = "1.0.0"
+version = "1.0.3"
 description = "Hytale SDK analysis tool and MCP server"
 readme = "README.md"
 requires-python = ">=3.11"
