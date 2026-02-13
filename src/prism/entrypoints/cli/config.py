@@ -72,6 +72,16 @@ def set_config_cmd(
         config_impl.save_config(cfg, root)
         out.success(i18n.t("cli.config.jadx_path_set_success", path=j_path))
         return 0
+    elif key == "decompiler":
+        val = value.lower().strip()
+        if val not in ["jadx", "vineflower"]:
+            out.error(i18n.t("cli.config.decompiler_invalid", value=value))
+            return 1
+        cfg = config_impl.load_config(root)
+        cfg[config_impl.CONFIG_KEY_DECOMPILER] = val
+        config_impl.save_config(cfg, root)
+        out.success(i18n.t("cli.config.decompiler_set_success", engine=val))
+        return 0
     else:
         out.error(i18n.t("cli.config.unknown_key", key=key))
         return 1

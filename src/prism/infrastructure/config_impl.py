@@ -36,12 +36,18 @@ CONFIG_KEY_OUTPUT_DIR = "output_dir"
 CONFIG_KEY_LANG = "lang"
 CONFIG_KEY_ACTIVE_SERVER = "active_server"
 CONFIG_KEY_JADX_PATH = "jadx_path"
+CONFIG_KEY_DECOMPILER = "decompiler"
 
 
-#_ JADX Decompiler (Fat JAR from Maven Central)
+#_ JADX Decompiler
 JADX_VERSION = "1.5.3"
 JADX_URL = f"https://github.com/skylot/jadx/releases/download/v{JADX_VERSION}/jadx-{JADX_VERSION}.zip"
 JADX_JAR_NAME = f"jadx-{JADX_VERSION}-all.jar"
+
+#_ Vineflower Decompiler
+VINEFLOWER_VERSION = "1.11.2"
+VINEFLOWER_URL = f"https://github.com/Vineflower/vineflower/releases/download/{VINEFLOWER_VERSION}/vineflower-{VINEFLOWER_VERSION}-slim.jar"
+VINEFLOWER_JAR_NAME = f"vineflower-{VINEFLOWER_VERSION}-slim.jar"
 
 
 def get_project_root(override_root: Path | str | None = None, allow_global: bool = True) -> Path:
@@ -171,6 +177,11 @@ def get_jadx_jar_path(root: Path) -> Path:
     return get_bin_dir(root) / JADX_JAR_NAME
 
 
+def get_vineflower_jar_path(root: Path) -> Path:
+    """Path to the cached Vineflower JAR in workspace/bin/."""
+    return get_bin_dir(root) / VINEFLOWER_JAR_NAME
+
+
 def get_jadx_url() -> str:
     """Current JADX download URL (from env or default)."""
     return os.environ.get(ENV_JADX_URL, JADX_URL)
@@ -266,3 +277,9 @@ def get_active_version(root: Path | None = None) -> str:
     if active in VALID_SERVER_VERSIONS:
         return active
     return "release"
+
+
+def get_decompiler_engine_name(root: Path | None = None) -> str:
+    """Gets the configured decompiler engine name (jadx, vineflower), or 'jadx' by default."""
+    cfg = load_config(root)
+    return cfg.get(CONFIG_KEY_DECOMPILER, "jadx").lower()

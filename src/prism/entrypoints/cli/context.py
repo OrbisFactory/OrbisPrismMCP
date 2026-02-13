@@ -105,6 +105,7 @@ def init_cmd(
     version: Annotated[Optional[str], typer.Argument(help=i18n.t("cli.init.version_help"))] = None,
     all_versions: Annotated[bool, typer.Option("--all", "-a", help=i18n.t("cli.init.all_help"))] = False,
     include_assets: Annotated[bool, typer.Option("--assets", help=i18n.t("cli.init.assets_help"))] = False,
+    engine: Annotated[Optional[str], typer.Option("--engine", "-e", help=i18n.t("cli.context.engine_help"))] = None,
 ) -> int:
     """Full pipeline: detects, decompiles, prunes, and indexes."""
     root: Path = ctx.obj["root"]
@@ -131,7 +132,7 @@ def init_cmd(
     out.phase(i18n.t("cli.build.phase_decompile"))
     
     #_ run_decompile_only already handles its own Progress bar
-    success, result = decompile.run_decompile_only(root, versions=versions_list)
+    success, result = decompile.run_decompile_only(root, versions=versions_list, engine_name=engine)
     
     if not success:
         out.error(i18n.t("cli.build.decompile_failed"))
@@ -244,6 +245,7 @@ def reset_cmd(
 def decompile_cmd(
     ctx: typer.Context,
     version: Annotated[Optional[str], typer.Argument(help="Specific version to decompile (release, prerelease), or 'all'.")] = None,
+    engine: Annotated[Optional[str], typer.Option("--engine", "-e", help=i18n.t("cli.context.engine_help"))] = None,
 ) -> int:
     """JADX only → decompiled_raw (without pruning)."""
     root: Path = ctx.obj["root"]
