@@ -85,6 +85,7 @@ def init_schema(conn: sqlite3.Connection) -> None:
             params,
             const_name,
             const_value,
+            snippet,
             tokenize='unicode61'
         )
     """)
@@ -119,7 +120,7 @@ def init_assets_schema(conn: sqlite3.Connection) -> None:
             category,
             internal_id,
             metadata,
-            tokenize='unicode61'
+            tokenize='trigram'
         )
     """)
     conn.commit()
@@ -197,11 +198,12 @@ def insert_fts_row(
     params: str | None = None,
     const_name: str | None = None,
     const_value: str | None = None,
+    snippet: str | None = None,
 ) -> None:
     """Inserts a row into the FTS5 table to make it searchable."""
     conn.execute(
-        "INSERT INTO api_fts (package, class_name, kind, method_name, returns, params, const_name, const_value) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-        (package, class_name, kind, method_name, returns, params, const_name, const_value),
+        "INSERT INTO api_fts (package, class_name, kind, method_name, returns, params, const_name, const_value, snippet) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (package, class_name, kind, method_name, returns, params, const_name, const_value, snippet),
     )
 
 
@@ -365,10 +367,14 @@ def search_fts(
     """Searches in the FTS5 table api_fts. unique_classes: one entry per class with method_count."""
     if not query_term or not query_term.strip():
         return []
-    term = query_term.strip()
+    from . import search_utils
+    term = search_utils.sanitize_fts_query(query_term)
+    
     fetch_limit = limit * 20 if unique_classes else limit
     sql = """SELECT api_fts.package, api_fts.class_name, api_fts.kind, api_fts.method_name,
-             api_fts.returns, api_fts.params, api_fts.const_name, api_fts.const_value, c.file_path
+             api_fts.returns, api_fts.params, api_fts.const_name, api_fts.const_value,
+             api_fts.snippet, c.file_path,
+             api_fts.rank
              FROM api_fts JOIN classes c ON c.package = api_fts.package AND c.class_name = api_fts.class_name
              WHERE api_fts MATCH ?"""
     params: list = [term]
@@ -380,6 +386,7 @@ def search_fts(
     if kind and kind.strip():
         sql += " AND api_fts.kind = ?"
         params.append(kind.strip().lower())
+    sql += " ORDER BY api_fts.rank"
     sql += " LIMIT ?"
     params.append(fetch_limit)
     cur = conn.execute(sql, params)
@@ -513,12 +520,16 @@ def search_assets_fts(conn: sqlite3.Connection, query_term: str, limit: int = 50
     if not query_term or not query_term.strip():
         return []
     
+    from . import search_utils
+    term = search_utils.sanitize_fts_query(query_term)
+    
     cur = conn.execute(
         """SELECT a.path, a.extension, a.size, a.category, a.internal_id, a.width, a.height, a.metadata, a.version
            FROM assets a
            JOIN assets_fts f ON a.path = f.path
            WHERE assets_fts MATCH ?
+           ORDER BY f.rank
            LIMIT ?""",
-        (query_term.strip(), limit)
+        (term, limit)
     )
     return [dict(r) for r in cur.fetchall()]

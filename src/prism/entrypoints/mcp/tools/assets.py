@@ -83,11 +83,24 @@ def register(app: FastMCP, config: ConfigProvider, repo: AssetsRepository):
         #_ Try to decode as UTF-8, if fails, return base64
         try:
             content = data.decode('utf-8')
-            result["content"] = content
+            
+            #_ If content is too large (> 50KB), offer a summary/truncate
+            if len(content) > 50000:
+                result["content_summary"] = f"File is too large ({len(content)} bytes). Showing first 500 characters."
+                result["content"] = content[:500] + "\n... [TRUNCATED] ..."
+                result["is_truncated"] = True
+            else:
+                result["content"] = content
+                
             result["encoding"] = "utf-8"
         except UnicodeDecodeError:
             b64 = base64.b64encode(data).decode('ascii')
-            result["content"] = b64
+            #_ base64 also truncated if too large
+            if len(b64) > 100000:
+                 result["content"] = b64[:1000] + "... [BASE64 TRUNCATED] ..."
+                 result["is_truncated"] = True
+            else:
+                 result["content"] = b64
             result["encoding"] = "base64"
         
         return json.dumps(result, ensure_ascii=False, indent=2)
