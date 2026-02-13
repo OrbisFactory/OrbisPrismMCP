@@ -130,13 +130,21 @@ def init_cmd(
 
     out.phase(i18n.t("cli.build.phase_decompile"))
     
-    #_ run_decompile_only already handles its own Progress bar, we avoid nesting out.status to prevent flickering
-    success, err = decompile.run_decompile_only(root, versions=versions_list)
+    #_ run_decompile_only already handles its own Progress bar
+    success, result = decompile.run_decompile_only(root, versions=versions_list)
     
     if not success:
         out.error(i18n.t("cli.build.decompile_failed"))
-        out.error(i18n.t(f"cli.decompile.{err}"))
+        out.error(i18n.t(f"cli.decompile.{result}"))
         return 1
+    
+    #_ Show summary
+    if isinstance(result, list):
+        for stats in result:
+            out.success(i18n.t("cli.decompile.success_stats", 
+                               files=stats["total_files"], 
+                               time=f"{stats['elapsed_time']:.1f}s"))
+    
     out.phase(i18n.t("cli.build.phase_decompile_done"))
 
     out.phase(i18n.t("cli.build.phase_prune"))
@@ -246,12 +254,18 @@ def decompile_cmd(
     versions = _resolve_context_versions(root, version, default_to_all=False)
 
     #_ Removed nested out.status
-    success, err = decompile.run_decompile_only(root, versions=versions)
+    success, result = decompile.run_decompile_only(root, versions=versions)
 
     if success:
-        out.success(i18n.t("cli.decompile.success"))
+        if isinstance(result, list):
+            for stats in result:
+                out.success(i18n.t("cli.decompile.success_stats", 
+                                   files=stats["total_files"], 
+                                   time=f"{stats['elapsed_time']:.1f}s"))
+        else:
+            out.success(i18n.t("cli.decompile.success"))
         return 0
-    out.error(i18n.t(f"cli.decompile.{err}"))
+    out.error(i18n.t(f"cli.decompile.{result}"))
     return 1
 
 

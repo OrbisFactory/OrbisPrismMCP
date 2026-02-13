@@ -72,13 +72,16 @@ def run_jadx(
     ]
     
     #_ Count total classes in JAR to have a progress target
+    #_ JADX groups inner classes (with '$') into the main .java file.
+    #_ By excluding them from the total, the progress bar will be much more accurate.
     total_classes = 0
     try:
         with zipfile.ZipFile(jar_path, 'r') as z:
-            total_classes = sum(1 for f in z.namelist() if f.endswith(".class"))
+            total_classes = sum(1 for f in z.namelist() if f.endswith(".class") and "$" not in f)
     except:
         total_classes = 1000 #_ Fallback
     
+    start_time = time.time()
     try:
         if log_path:
             log_path.parent.mkdir(parents=True, exist_ok=True)
@@ -123,15 +126,22 @@ def run_jadx(
                     f.write(stdout)
                     f.write(f"\n--- exit code: {proc.returncode} ---\n")
 
-        return (True, proc.returncode != 0)
+        elapsed = time.time() - start_time
+        total_files = sum(1 for _ in out_dir.rglob("*.java"))
+        
+        return (True, {
+            "had_errors": proc.returncode != 0,
+            "total_files": total_files,
+            "elapsed_time": elapsed
+        })
     except Exception as e:
         print(f"JADX execution failed: {e}", file=sys.stderr)
-        return (False, False)
+        return (False, None)
 
 
-def run_decompile_only_for_version(root: Path | None, version: str) -> tuple[bool, str]:
+def run_decompile_only_for_version(root: Path | None, version: str) -> tuple[bool, str | dict]:
     """
-    Runs Vineflower only for a version. Returns (True, "") or (False, err_key).
+    Runs Vineflower only for a version. Returns (True, stats_dict) or (False, err_key).
     """
     root = root or config_impl.get_project_root()
     if version == "release":
@@ -158,34 +168,36 @@ def run_decompile_only_for_version(root: Path | None, version: str) -> tuple[boo
     log_path = logs_dir / f"decompile_{version}_{timestamp}.log"
 
     from .. import i18n
-    ok, had_errors = run_jadx(jar_path, raw_dir, jadx_jar, log_path)
+    ok, stats = run_jadx(jar_path, raw_dir, jadx_jar, log_path)
     if not ok:
         return (False, "decompile_failed")
     
-    return (True, "")
+    return (True, stats)
 
 
 def run_decompile_only(
     root: Path | None = None,
     versions: list[str] | None = None,
-) -> tuple[bool, str]:
+) -> tuple[bool, str | list[dict]]:
     """Runs JADX only (without pruning)."""
     root = root or config_impl.get_project_root()
     if versions is None:
         versions = [config_impl.get_active_version(root)]
     
+    all_stats = []
     for version in versions:
-        ok, err = run_decompile_only_for_version(root, version)
+        ok, result = run_decompile_only_for_version(root, version)
         if not ok:
-            return (False, err)
-    return (True, "")
+            return (False, result)
+        all_stats.append(result)
+    return (True, all_stats)
 
 
-def run_decompile_and_prune_for_version(root: Path | None, version: str) -> tuple[bool, str]:
+def run_decompile_and_prune_for_version(root: Path | None, version: str) -> tuple[bool, str | dict]:
     """Decompiles with JADX and prunes."""
-    ok, err = run_decompile_only_for_version(root, version)
+    ok, result = run_decompile_only_for_version(root, version)
     if not ok:
-        return (False, err)
+        return (False, result)
 
     root = root or config_impl.get_project_root()
     raw_dir = config_impl.get_decompiled_raw_dir(root, version)
@@ -197,21 +209,23 @@ def run_decompile_and_prune_for_version(root: Path | None, version: str) -> tupl
         print(i18n.t("cli.prune.no_core", raw_dir=raw_dir), file=sys.stderr)
         return (False, "prun_failed")
     
-    print(i18n.t("cli.prune.done", files=stats["files"], dest=decompiled_dir, subdir=stats["source_subdir"]))
-    return (True, "")
+    #_ Return both decompile stats and prune stats if needed, but for now we focus on decompile
+    return (True, result)
 
 
 def run_decompile_and_prune(
     root: Path | None = None,
     versions: list[str] | None = None,
-) -> tuple[bool, str]:
+) -> tuple[bool, str | list[dict]]:
     """Decompiles and prunes one or more versions using JADX."""
     root = root or config_impl.get_project_root()
     if versions is None:
         versions = [config_impl.get_active_version(root)]
 
+    all_stats = []
     for version in versions:
-        ok, err = run_decompile_and_prune_for_version(root, version)
+        ok, result = run_decompile_and_prune_for_version(root, version)
         if not ok:
-            return (False, err)
-    return (True, "")
+            return (False, result)
+        all_stats.append(result)
+    return (True, all_stats)
