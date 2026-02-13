@@ -91,7 +91,7 @@ def get_workspace_dir(root: Path | None = None) -> Path:
 
 
 def get_bin_dir(root: Path | None = None) -> Path:
-    """Binary directory (for tools like Procyon)."""
+    """Binary directory (for tools like JADX/Vineflower)."""
     return get_workspace_dir(root) / "bin"
 
 

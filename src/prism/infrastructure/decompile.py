@@ -148,6 +148,8 @@ class VineflowerEngine(DecompilerEngine):
         cmd = [
             "java",
             "-Xmx4G",
+            "-Djava.awt.headless=true",
+            "-XX:+UseParallelGC",
             "-jar", str(decompiler_jar.resolve()),
             f"--threads={cpu_cores}",
             "--rsy=1",
@@ -180,22 +182,40 @@ class VineflowerEngine(DecompilerEngine):
                     text=True,
                     encoding="utf-8",
                     errors="replace",
+                    bufsize=1  #_ Line buffered
                 )
                 
                 full_output = []
-                while proc.poll() is None:
+                import threading
+                import queue
+                
+                #_ Queue to pass lines from thread to main loop
+                q = queue.Queue()
+                
+                def reader_thread():
+                    for line in iter(proc.stdout.readline, ''):
+                        q.put(line)
+                    proc.stdout.close()
+                
+                t = threading.Thread(target=reader_thread, daemon=True)
+                t.start()
+                
+                while t.is_alive() or not q.empty():
+                    #_ Check for new files (progress)
                     count = sum(1 for _ in out_dir.rglob("*.java"))
                     progress.update(task, completed=count)
                     
-                    line = proc.stdout.readline()
-                    if line:
-                        full_output.append(line)
+                    #_ Process output lines without blocking the UI
+                    try:
+                        while True:
+                            line = q.get_nowait()
+                            full_output.append(line)
+                    except queue.Empty:
+                        pass
                     
-                    time.sleep(1)
+                    time.sleep(0.5) #_ Update every 500ms
                 
-                remaining = proc.stdout.read()
-                if remaining:
-                    full_output.append(remaining)
+                proc.wait()
                 
                 stdout = "".join(full_output)
                 if log_path:
