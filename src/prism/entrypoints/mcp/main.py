@@ -14,7 +14,7 @@ def run(transport: str = "stdio", host: str = "127.0.0.1", port: int = 8000):
     index_repository = SqliteIndexRepository()
     assets_repository = SqliteAssetsRepository()
     
-    app = FastMCP("orbis-prism", host=host, port=port)
+    app = FastMCP("orbis_prism_mcp", host=host, port=port)
     
     # Register all tools, injecting dependencies.
     register_all_tools(app, config_provider, index_repository, assets_repository)
