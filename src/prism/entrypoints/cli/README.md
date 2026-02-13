@@ -8,10 +8,11 @@ The primary entry point is the global `prism` command. For local development, yo
 
 ## `context` / `ctx` Commands
 
-### `ctx init [VERSION] [--assets]`
-Runs the full build pipeline (detect, decompile, prune, db).
+### `ctx init [VERSION]`
+Runs the full build pipeline (detect, decompile, index).
 - **Default Behavior**: Processes the **release** version.
 - **`--assets`**: Also indexes game assets (models, textures, metadata).
+- **`--engine <name>` / `-e`**: Select decompiler (`jadx` or `vineflower`).
 - **`--all` / `-a`**: Processes both `release` and `prerelease`.
 
 ### `ctx assets <COMMAND>`
@@ -24,7 +25,7 @@ Manage and search game assets metadata.
 - **`detect`**: Find `HytaleServer.jar`.
 - **`list`**: Show indexed versions and current active context.
 - **`use <VERSION>`**: Change the active version (`release`|`prerelease`).
-- **`clean <TARGET>`**: Remove `db`, `decompiled`, or `all` artifacts.
+- **`clean <TARGET>`**: Remove `db`, `sources`, or `all` artifacts.
 
 ---
 
@@ -48,3 +49,4 @@ prism mcp [OPTIONS]
 ## Configuration & Language
 - **`lang set <en|es>`**: Change CLI language.
 - **`config set <KEY> <VALUE>`**: Manually configure `game_path` or `jadx_path`.
+- **`config decompiler <NAME>`**: Set default decompiler (`jadx` or `vineflower`).

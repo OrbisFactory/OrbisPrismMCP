@@ -6,11 +6,11 @@ Always consult this file when working in this repository to get project context.
 
 ## What is Orbis Prism
 
-An engineering tool for **Hytale** modding. It takes the official server (`HytaleServer.jar`), decompiles it with JADX, isolates the `com.hypixel.hytale` core, indexes classes and methods into an SQLite database with FTS5, and exposes that API via a **CLI** and an **MCP server** for agents (like Cursor, Claude, etc.) to query the API without "hallucinating."
+An engineering tool for **Hytale** modding. It takes the official server (`HytaleServer.jar`), decompiles it with JADX (or Vineflower), isolates the `com.hypixel.hytale` core (via JAR slimming), indexes classes and methods into an SQLite database with FTS5, and exposes that API via a **CLI** and an **MCP server** for agents (like Cursor, Claude, etc.) to query the API without "hallucinating."
 
 - **Project Folder:** `orbis-prism/`
 - **Entry Point:** `prism` (Global command) or `python main.py` (Local development).
-- **Stack:** Python 3.11+, JADX, SQLite (FTS5), main dependency `mcp>=1.0.0`.
+- **Stack:** Python 3.11+, JADX/Vineflower, SQLite (FTS5), main dependency `mcp>=1.0.0`.
 
 ---
 
@@ -32,7 +32,7 @@ The project follows a hexagonal (ports and adapters) architecture:
 
 ## Main Workflows
 
-1.  **Initial Command: `prism ctx init --assets`**. This detects the JAR, decompiles, prunes, and indexes both the API and game assets.
+1.  **Initial Command: `prism ctx init --assets`**. This detects the JAR, decompiles (with optimizations), and indexes both the API and game assets.
 2.  **Asset Management**: Use `prism ctx assets` to refresh asset indexing or `prism_search_assets` in MCP to explore models/textures.
 3.  **Workspace Isolation**: `prism` automatically finds the project root. Use `-w <path>` to force a workspace.
 

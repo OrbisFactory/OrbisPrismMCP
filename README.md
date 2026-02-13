@@ -16,10 +16,11 @@
 ## 🚀 Quick Start
 
 1. **Install**
-   Install directly from your local clone or (futurely) from PyPI:
+   Install directly from PyPI:
    ```bash
-   pip install .
+   pip install orbis-prism
    ```
+   *(Or for local development: `pip install -e .`)*
 
 2. **Initialize Workspace**
    This command detects your Hytale installation, decompiles the server, and indexes the API and **assets**.
@@ -38,13 +39,14 @@
 
 - **Official Hytale Installation** (Launcher and game files).
 - **Python 3.11+**
-- **Java 17-25** (Required for Hytale server compatibility and JADX).
+- **Java 17-25** (Required for Hytale server compatibility and JADX/Vineflower).
 
 ---
 
 ## 🏛️ Project Features
 
 - **Global CLI**: Run `prism` from any directory.
+- **Decompiler Choice**: Switch between **JADX** (default) and **Vineflower** engines.
 - **Deep Indexing**: Fast API search with SQLite FTS5.
 - **Asset Exploration**: Search and inspect Hytale assets (JSON, models, textures) directly from `Assets.zip`.
 - **AI-Ready**: Native MCP server for integration with Cursor, Claude, and more.
