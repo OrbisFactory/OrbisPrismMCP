@@ -16,7 +16,6 @@ def print_help() -> None:
     print(fmt.format("context | ctx clean <db|build|all>") + i18n.t("cli.help.context_clean_desc"))
     print(fmt.format("context | ctx reset") + i18n.t("cli.help.context_reset_desc"))
     print(fmt.format("context | ctx decompile [release|prerelease|--all|-a]") + i18n.t("cli.help.context_decompile_desc"))
-    print(fmt.format("context | ctx prune [release|prerelease|--all|-a]") + i18n.t("cli.help.context_prune_desc"))
     print(fmt.format("context | ctx db [release|prerelease|--all|-a]") + i18n.t("cli.help.context_db_desc"))
     print(fmt.format("context | ctx list") + i18n.t("cli.help.context_list_desc"))
     print(fmt.format("context | ctx use <release|prerelease>") + i18n.t("cli.help.context_use_desc"))

@@ -24,14 +24,14 @@ def clean_db(root: Path | None = None) -> None:
 
 def clean_build(root: Path | None = None) -> None:
     """
-    Deletes build artifact directories: decompiled_raw/<version> and decompiled/<version>
+    Deletes build artifact directories: sources/<version> and decompiled/<version>
     for release and prerelease. Only deletes them if they exist.
     """
     root = root or config_impl.get_project_root()
     for version in VALID_SERVER_VERSIONS:
-        raw_dir = config_impl.get_decompiled_raw_dir(root, version)
-        if raw_dir.is_dir():
-            shutil.rmtree(raw_dir)
+        sources_dir = config_impl.get_sources_dir(root, version)
+        if sources_dir.is_dir():
+            shutil.rmtree(sources_dir)
         decompiled_dir = config_impl.get_decompiled_dir(root, version)
         if decompiled_dir.is_dir():
             shutil.rmtree(decompiled_dir)

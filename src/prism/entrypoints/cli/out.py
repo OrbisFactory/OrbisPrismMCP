@@ -33,6 +33,10 @@ def error(msg: str) -> None:
     """Prints an error message to stderr (red)."""
     _console.print(f"[red]✖ {msg}[/red]", style="bold")
 
+def warn(msg: str) -> None:
+    """Prints a warning/info message to stderr (yellow)."""
+    _console.print(f"[yellow]! {msg}[/yellow]")
+
 def table(title: str, data: List[Dict[str, Any]], columns: List[str] | None = None) -> None:
     """
     Prints a list of dictionaries as a well-formatted table to stdout.
@@ -62,16 +66,16 @@ def table(title: str, data: List[Dict[str, Any]], columns: List[str] | None = No
     _data_console.print(grid)
 
 @contextmanager
-def status(msg: str) -> Generator[None, None, None]:
+def status(msg: str) -> Generator[Any, None, None]:
     """
     Displays a spinner while a task is running (on stderr).
 
     Usage:
-        with out.status("Doing something..."):
-            time.sleep(2)
+        with out.status("Doing something...") as s:
+            s.update("Updating...")
     """
-    with _console.status(f"[cyan]{msg}[/cyan]", spinner="dots"):
-        yield
+    with _console.status(f"[cyan]{msg}[/cyan]", spinner="dots") as s:
+        yield s
 def progress() -> Progress:
     """
     Returns a standardized Progress instance configured for the CLI.
@@ -84,6 +88,7 @@ def progress() -> Progress:
         TaskProgressColumn(),
         MofNCompleteColumn(),
         TimeElapsedColumn(),
+        TextColumn("{task.fields[filename]}"),
         console=_console,
         transient=True,
     )

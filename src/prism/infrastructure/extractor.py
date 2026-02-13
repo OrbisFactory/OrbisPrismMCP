@@ -85,12 +85,16 @@ def _extract_from_java(content: str, file_path: str) -> list[tuple[str, str, str
             m_name = m.group(3)
             if m_name == name: continue #_ Constructor
             
+            #_ Capture the full signature as a snippet
+            snippet = m.group(0).strip()
+            
             methods.append({
                 "method": m_name,
                 "returns": m.group(2),
                 "params": m.group(4).strip(),
                 "is_static": "static" in m.group(0),
                 "annotation": m.group(1).strip() if m.group(1) else None,
+                "snippet": snippet
             })
         
         #_ Constants
@@ -101,6 +105,7 @@ def _extract_from_java(content: str, file_path: str) -> list[tuple[str, str, str
                 "name": c.group(2),
                 "type": c.group(1),
                 "value": c.group(3).strip().strip('"'),
+                "snippet": c.group(0).strip()
             })
         
         final_results.append((pkg, name, kind, methods, parent, interfaces, constants))
@@ -115,10 +120,10 @@ def run_index(root: Path | None = None, version: str = "release") -> tuple[bool,
     (False, "no_decompiled") if no code; (False, "db_error") if DB fails.
     """
     root = root or config_impl.get_project_root()
-    decompiled_dir = config_impl.get_decompiled_dir(root, version)
-    if not decompiled_dir.is_dir():
+    sources_dir = config_impl.get_sources_dir(root, version)
+    if not sources_dir.is_dir():
         return (False, "no_decompiled")
-    java_files = list(decompiled_dir.rglob("*.java"))
+    java_files = list(sources_dir.rglob("*.java"))
     if not java_files:
         return (False, "no_decompiled")
 
@@ -129,7 +134,7 @@ def run_index(root: Path | None = None, version: str = "release") -> tuple[bool,
             db.clear_tables(conn)
             files_processed = 0
             
-            task = progress.add_task(f"[green]Indexing {version}", total=len(java_files))
+            task = progress.add_task(f"[green]Indexing {version}", total=len(java_files), filename="")
 
             for jpath in java_files:
                 try:
@@ -139,7 +144,7 @@ def run_index(root: Path | None = None, version: str = "release") -> tuple[bool,
                     continue
                 #_ Relative path to the decompiled directory for storage
                 try:
-                    rel_path = jpath.relative_to(decompiled_dir)
+                    rel_path = jpath.relative_to(sources_dir)
                 except ValueError:
                     rel_path = jpath
                 file_path_str = str(rel_path).replace("\\", "/")
@@ -148,6 +153,9 @@ def run_index(root: Path | None = None, version: str = "release") -> tuple[bool,
                 results = _extract_from_java(content, file_path_str)
                 for pkg, class_name, kind, methods, parent, interfaces, constants in results:
                     class_id = db.insert_class(conn, pkg, class_name, kind, file_path_str, parent, interfaces)
+                    
+                    #_ Insert class itself into FTS with its kind as snippet
+                    db.insert_fts_row(conn, pkg, class_name, kind, snippet=f"public {kind} {class_name}")
                     
                     #_ Insert methods
                     for m in methods:
@@ -168,6 +176,7 @@ def run_index(root: Path | None = None, version: str = "release") -> tuple[bool,
                             method_name=m["method"],
                             returns=m["returns"],
                             params=m["params"],
+                            snippet=m["snippet"]
                         )
                     
                     #_ Insert constants
@@ -186,6 +195,7 @@ def run_index(root: Path | None = None, version: str = "release") -> tuple[bool,
                             kind,
                             const_name=c["name"],
                             const_value=c["value"],
+                            snippet=c["snippet"]
                         )
                 
                 files_processed += 1

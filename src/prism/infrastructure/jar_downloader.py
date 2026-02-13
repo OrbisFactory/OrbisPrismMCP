@@ -28,7 +28,7 @@ def download_jar(url: str, dest_path: Path, description: str | None = None) -> b
             total_size = int(response.info().get("Content-Length", 0))
             
             with out.progress() as progress:
-                task = progress.add_task(desc, total=total_size)
+                task = progress.add_task(desc, total=total_size, filename="")
                 
                 with open(temp_path, "wb") as f:
                     chunk_size = 8192
@@ -101,4 +101,22 @@ def ensure_jadx(root: Path | None = None) -> Path | None:
         if extracted:
             return dest_jar
             
+    return None
+def ensure_vineflower(root: Path | None = None) -> Path | None:
+    """
+    Ensures Vineflower-slim JAR is present in workspace/bin.
+    Returns Path to the JAR or None if failed.
+    """
+    root = root or config_impl.get_project_root()
+    dest_jar = config_impl.get_vineflower_jar_path(root)
+    
+    if dest_jar.is_file():
+        return dest_jar
+    
+    url = config_impl.VINEFLOWER_URL
+    desc = i18n.t("cli.decompile.downloading_engine", engine="Vineflower")
+    
+    if download_jar(url, dest_jar, desc):
+        return dest_jar
+    
     return None

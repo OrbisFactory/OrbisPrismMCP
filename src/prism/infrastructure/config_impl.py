@@ -36,27 +36,49 @@ CONFIG_KEY_OUTPUT_DIR = "output_dir"
 CONFIG_KEY_LANG = "lang"
 CONFIG_KEY_ACTIVE_SERVER = "active_server"
 CONFIG_KEY_JADX_PATH = "jadx_path"
+CONFIG_KEY_DECOMPILER = "decompiler"
 
 
-#_ JADX Decompiler (Fat JAR from Maven Central)
+#_ JADX Decompiler
 JADX_VERSION = "1.5.3"
 JADX_URL = f"https://github.com/skylot/jadx/releases/download/v{JADX_VERSION}/jadx-{JADX_VERSION}.zip"
 JADX_JAR_NAME = f"jadx-{JADX_VERSION}-all.jar"
 
+#_ Vineflower Decompiler
+VINEFLOWER_VERSION = "1.11.2"
+VINEFLOWER_URL = f"https://github.com/Vineflower/vineflower/releases/download/{VINEFLOWER_VERSION}/vineflower-{VINEFLOWER_VERSION}.jar"
+VINEFLOWER_JAR_NAME = f"vineflower-{VINEFLOWER_VERSION}.jar"
 
-def get_project_root() -> Path:
-    """Project root: folder containing main.py / .prism.json."""
+
+def get_project_root(override_root: Path | str | None = None, allow_global: bool = True) -> Path:
+    """Project root: folder containing .prism.json, or fallback to global home."""
+    # 0. Override from parameter
+    if override_root:
+        p = Path(override_root).resolve()
+        if p.is_dir():
+            return p
+            
+    # 1. Check environment variable
     env_root = os.environ.get(ENV_WORKSPACE)
     if env_root:
         p = Path(env_root).resolve()
         if p.is_dir():
             return p
-    current = Path(__file__).resolve().parent
+            
+    # 2. Search upwards for .prism.json starting from CWD
+    current = Path.cwd().resolve()
     while current != current.parent:
-        if (current / "main.py").exists():
-            return current.resolve()
+        if (current / CONFIG_FILENAME).exists():
+            return current
         current = current.parent
-    return Path.cwd()
+        
+    # 3. Fallback
+    if allow_global:
+        global_home = Path.home() / ".prism"
+        return global_home.resolve()
+    else:
+        # Default to CWD if we are for example initializing a new project
+        return Path.cwd().resolve()
 
 
 def get_workspace_dir(root: Path | None = None) -> Path:
@@ -69,7 +91,7 @@ def get_workspace_dir(root: Path | None = None) -> Path:
 
 
 def get_bin_dir(root: Path | None = None) -> Path:
-    """Binary directory (for tools like Procyon)."""
+    """Binary directory (for tools like JADX/Vineflower)."""
     return get_workspace_dir(root) / "bin"
 
 
@@ -155,6 +177,11 @@ def get_jadx_jar_path(root: Path) -> Path:
     return get_bin_dir(root) / JADX_JAR_NAME
 
 
+def get_vineflower_jar_path(root: Path) -> Path:
+    """Path to the cached Vineflower JAR in workspace/bin/."""
+    return get_bin_dir(root) / VINEFLOWER_JAR_NAME
+
+
 def get_jadx_url() -> str:
     """Current JADX download URL (from env or default)."""
     return os.environ.get(ENV_JADX_URL, JADX_URL)
@@ -180,9 +207,20 @@ def get_decompiled_dir(root: Path | None = None, version: str = "release") -> Pa
     return get_workspace_dir(root) / "decompiled" / version
 
 
-def get_decompiled_raw_dir(root: Path | None = None, version: str = "release") -> Path:
-    """Raw JADX directory for a version (before pruning)."""
-    return get_workspace_dir(root) / "decompiled_raw" / version
+def get_assets_zip_path(root: Path | None = None, version: str = "release") -> Path | None:
+    """Path to the Assets.zip file in the game installation."""
+    jar = get_jar_path_release_from_config(root) if version == "release" else get_jar_path_prerelease_from_config(root)
+    if not jar:
+        return None
+    # HytaleServer.jar is usually in .../Server/HytaleServer.jar
+    # Assets.zip is usually in .../Assets.zip (sibling of Server/ directory)
+    assets_path = jar.parent.parent / "Assets.zip"
+    return assets_path if assets_path.exists() else None
+
+
+def get_sources_dir(root: Path | None = None, version: str = "release") -> Path:
+    """Directory for decompiled Hytale sources."""
+    return get_workspace_dir(root) / "sources" / version
 
 
 def get_db_dir(root: Path | None = None) -> Path:
@@ -217,6 +255,15 @@ def get_db_path(root: Path | None = None, version: str | None = None) -> Path:
     return db_dir / f"prism_api_{version}.db"
 
 
+def get_assets_db_path(root: Path | None = None, version: str | None = None) -> Path:
+    """Path to the specific Assets DB (hybrid approach)."""
+    root = root or get_project_root()
+    if version is None:
+        version = get_active_version(root)
+    db_dir = get_db_dir(root)
+    return db_dir / f"prism_assets_{version}.db"
+
+
 def get_logs_dir(root: Path | None = None) -> Path:
     """Logs directory."""
     base = root if root is not None else get_project_root()
@@ -230,3 +277,9 @@ def get_active_version(root: Path | None = None) -> str:
     if active in VALID_SERVER_VERSIONS:
         return active
     return "release"
+
+
+def get_decompiler_engine_name(root: Path | None = None) -> str:
+    """Gets the configured decompiler engine name (jadx, vineflower), or 'jadx' by default."""
+    cfg = load_config(root)
+    return cfg.get(CONFIG_KEY_DECOMPILER, "jadx").lower()
