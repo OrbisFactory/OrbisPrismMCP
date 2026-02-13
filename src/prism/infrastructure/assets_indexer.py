@@ -161,7 +161,7 @@ class AssetIndexer:
                         version=self.version
                     )
                     
-                    if progress_callback and i % 500 == 0:
+                    if progress_callback and i % 100 == 0:
                         progress_callback(file_path, i, total)
                 
                 conn.commit()

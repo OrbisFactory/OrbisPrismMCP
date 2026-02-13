@@ -84,6 +84,7 @@ def progress() -> Progress:
         TaskProgressColumn(),
         MofNCompleteColumn(),
         TimeElapsedColumn(),
+        TextColumn("{task.fields[filename]}"),
         console=_console,
         transient=True,
     )

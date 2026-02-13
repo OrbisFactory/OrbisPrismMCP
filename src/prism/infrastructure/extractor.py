@@ -134,7 +134,7 @@ def run_index(root: Path | None = None, version: str = "release") -> tuple[bool,
             db.clear_tables(conn)
             files_processed = 0
             
-            task = progress.add_task(f"[green]Indexing {version}", total=len(java_files))
+            task = progress.add_task(f"[green]Indexing {version}", total=len(java_files), filename="")
 
             for jpath in java_files:
                 try:

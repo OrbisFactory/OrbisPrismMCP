@@ -86,7 +86,7 @@ def run_jadx(
                 f.write(f"Command: {' '.join(cmd)}\n\n")
 
         with out.progress() as progress:
-            task = progress.add_task("[cyan]Decompiling with JADX", total=total_classes)
+            task = progress.add_task("[cyan]Decompiling with JADX", total=total_classes, filename="")
             
             proc = subprocess.Popen(
                 cmd,

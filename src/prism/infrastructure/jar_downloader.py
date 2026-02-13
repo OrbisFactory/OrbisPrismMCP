@@ -28,7 +28,7 @@ def download_jar(url: str, dest_path: Path, description: str | None = None) -> b
             total_size = int(response.info().get("Content-Length", 0))
             
             with out.progress() as progress:
-                task = progress.add_task(desc, total=total_size)
+                task = progress.add_task(desc, total=total_size, filename="")
                 
                 with open(temp_path, "wb") as f:
                     chunk_size = 8192

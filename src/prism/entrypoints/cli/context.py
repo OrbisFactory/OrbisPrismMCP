@@ -173,9 +173,10 @@ def init_cmd(
                 continue
             
             db_path = config_impl.get_assets_db_path(root, v)
-            with out.status(i18n.t("cli.assets.indexing", version=v)) as status:
+            with out.progress() as p:
+                task = p.add_task(i18n.t("cli.assets.indexing", version=v), total=None, filename="")
                 def progress(path, current, total):
-                    status.update(f"[cyan]{i18n.t('cli.assets.indexing_progress', current=current, total=total)}[/cyan] {path}")
+                    p.update(task, completed=current, total=total, filename=f" [cyan]{Path(path).name}[/cyan]")
                 
                 use_cases.index_assets(db_path, assets_zip, v, progress)
             out.success(i18n.t("cli.assets.success", version=v))
@@ -383,11 +384,10 @@ def assets_cmd(
             continue
         
         db_path = config_impl.get_assets_db_path(root, v)
-        out.phase(i18n.t("cli.assets.indexing", version=v))
-        
-        with out.status(i18n.t("cli.assets.indexing", version=v)) as status:
+        with out.progress() as p:
+            task = p.add_task(i18n.t("cli.assets.indexing", version=v), total=None, filename="")
             def progress(path, current, total):
-                status.update(f"[cyan]{i18n.t('cli.assets.indexing_progress', current=current, total=total)}[/cyan] {path}")
+                p.update(task, completed=current, total=total, filename=f" [cyan]{Path(path).name}[/cyan]")
             
             use_cases.index_assets(db_path, assets_zip, v, progress)
         out.success(i18n.t("cli.assets.success", version=v))

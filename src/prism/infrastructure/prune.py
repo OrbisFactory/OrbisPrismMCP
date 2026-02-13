@@ -48,7 +48,7 @@ def prune_to_core(raw_dir: Path, dest_dir: Path) -> tuple[bool, dict | None]:
                 target = dest_dir / core_rel
                 all_files = [p for p in source_core.rglob("*") if p.is_file()]
                 
-                task = progress.add_task(f"[cyan]Pruning {core_rel}", total=len(all_files))
+                task = progress.add_task(f"[cyan]Pruning {core_rel}", total=len(all_files), filename="")
                 
                 for src in all_files:
                     rel = src.relative_to(source_core)
