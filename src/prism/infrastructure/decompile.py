@@ -123,14 +123,12 @@ class VineflowerEngine(DecompilerEngine):
             shutil.rmtree(out_dir)
         out_dir.mkdir(parents=True, exist_ok=True)
         
-        #_ Vineflower Flags:
-        #_ --rsy=1: Resynchronize syntax sugar
-        #_ --dgs=1: Decompile generic signatures
-        #_ --lac=1: Lambda as anonymous classes (optional, but Hytale uses lambdas)
+        cpu_cores = os.cpu_count() or 4
         cmd = [
             "java",
             "-Xmx4G",
             "-jar", str(decompiler_jar.resolve()),
+            f"--threads={cpu_cores}",
             "--rsy=1",
             "--dgs=1",
             str(jar_path.resolve()),

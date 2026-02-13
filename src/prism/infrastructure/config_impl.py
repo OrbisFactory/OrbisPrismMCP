@@ -46,8 +46,8 @@ JADX_JAR_NAME = f"jadx-{JADX_VERSION}-all.jar"
 
 #_ Vineflower Decompiler
 VINEFLOWER_VERSION = "1.11.2"
-VINEFLOWER_URL = f"https://github.com/Vineflower/vineflower/releases/download/{VINEFLOWER_VERSION}/vineflower-{VINEFLOWER_VERSION}-slim.jar"
-VINEFLOWER_JAR_NAME = f"vineflower-{VINEFLOWER_VERSION}-slim.jar"
+VINEFLOWER_URL = f"https://github.com/Vineflower/vineflower/releases/download/{VINEFLOWER_VERSION}/vineflower-{VINEFLOWER_VERSION}.jar"
+VINEFLOWER_JAR_NAME = f"vineflower-{VINEFLOWER_VERSION}.jar"
 
 
 def get_project_root(override_root: Path | str | None = None, allow_global: bool = True) -> Path:

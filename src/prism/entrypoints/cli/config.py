@@ -16,7 +16,7 @@ from . import out
 #_ Create a Typer sub-application for the 'config' commands
 app = typer.Typer(help=i18n.t("cli.config.help"))
 
-@app.command(name="set")
+@app.command(name="set", help=i18n.t("cli.config.set_help"))
 def set_config_cmd(
     ctx: typer.Context,
     key: Annotated[str, typer.Argument(help=i18n.t("cli.config.key_help"))],

@@ -129,7 +129,8 @@ def init_cmd(
         out.error(i18n.t("cli.decompile.no_jar"))
         return 1
 
-    out.phase(i18n.t("cli.build.phase_decompile"))
+    engine_name = engine or config_impl.get_decompiler_engine_name(root)
+    out.phase(i18n.t("cli.build.phase_decompile", engine=engine_name))
     
     #_ run_decompile_only already handles its own Progress bar
     success, result = decompile.run_decompile_only(root, versions=versions_list, engine_name=engine)
@@ -254,9 +255,15 @@ def decompile_cmd(
         return 1
     
     versions = _resolve_context_versions(root, version, default_to_all=False)
+    if not versions:
+        out.error(i18n.t("cli.decompile.no_jar"))
+        return 1
 
+    engine_name = engine or config_impl.get_decompiler_engine_name(root)
+    out.phase(i18n.t("cli.build.phase_decompile", engine=engine_name))
+    
     #_ Removed nested out.status
-    success, result = decompile.run_decompile_only(root, versions=versions)
+    success, result = decompile.run_decompile_only(root, versions=versions, engine_name=engine)
 
     if success:
         if isinstance(result, list):
