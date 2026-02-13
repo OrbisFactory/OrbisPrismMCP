@@ -104,6 +104,10 @@ def init_assets_schema(conn: sqlite3.Connection) -> None:
             path TEXT NOT NULL UNIQUE,
             extension TEXT NOT NULL,
             size INTEGER NOT NULL,
+            category TEXT,
+            internal_id TEXT,
+            width INTEGER,
+            height INTEGER,
             metadata TEXT,
             version TEXT NOT NULL
         )
@@ -112,6 +116,8 @@ def init_assets_schema(conn: sqlite3.Connection) -> None:
     conn.execute("""
         CREATE VIRTUAL TABLE assets_fts USING fts5(
             path,
+            category,
+            internal_id,
             metadata,
             tokenize='unicode61'
         )
@@ -477,15 +483,28 @@ def find_systems_for_component(conn: sqlite3.Connection, component_name: str, li
     return [dict(r) for r in cur.fetchall()]
 
 
-def insert_asset(conn: sqlite3.Connection, path: str, extension: str, size: int, metadata: str | None, version: str) -> None:
+def insert_asset(
+    conn: sqlite3.Connection,
+    path: str,
+    extension: str,
+    size: int,
+    category: str | None,
+    internal_id: str | None,
+    width: int | None,
+    height: int | None,
+    metadata: str | None,
+    version: str
+) -> None:
     """Inserts an asset into assets and assets_fts tables."""
     conn.execute(
-        "INSERT OR REPLACE INTO assets (path, extension, size, metadata, version) VALUES (?, ?, ?, ?, ?)",
-        (path, extension, size, metadata, version)
+        """INSERT OR REPLACE INTO assets 
+           (path, extension, size, category, internal_id, width, height, metadata, version) 
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        (path, extension, size, category, internal_id, width, height, metadata, version)
     )
     conn.execute(
-        "INSERT INTO assets_fts (path, metadata) VALUES (?, ?)",
-        (path, metadata)
+        "INSERT INTO assets_fts (path, category, internal_id, metadata) VALUES (?, ?, ?, ?)",
+        (path, category, internal_id, metadata)
     )
 
 
@@ -495,7 +514,7 @@ def search_assets_fts(conn: sqlite3.Connection, query_term: str, limit: int = 50
         return []
     
     cur = conn.execute(
-        """SELECT a.path, a.extension, a.size, a.metadata, a.version
+        """SELECT a.path, a.extension, a.size, a.category, a.internal_id, a.width, a.height, a.metadata, a.version
            FROM assets a
            JOIN assets_fts f ON a.path = f.path
            WHERE assets_fts MATCH ?

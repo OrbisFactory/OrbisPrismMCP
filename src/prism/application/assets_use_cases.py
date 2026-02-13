@@ -1,9 +1,10 @@
-# Application use cases for assets management.
+# src/prism/application/assets_use_cases.py
 import zipfile
 from pathlib import Path
-from typing import Callable
+from typing import Callable, List, Optional
 from ..infrastructure.assets_indexer import AssetIndexer
 from ..ports.assets_repository import AssetsRepository
+from ..domain.asset import Asset
 
 class AssetsUseCases:
     """Orchestrates asset-related operations."""
@@ -27,9 +28,13 @@ class AssetsUseCases:
         db_path: Path,
         query: str,
         limit: int = 50
-    ) -> list[dict]:
+    ) -> List[Asset]:
         """Searches assets in the database."""
         return self.repository.search_assets(db_path, query, limit)
+
+    def get_asset_info(self, db_path: Path, path: str) -> Optional[Asset]:
+        """Gets detailed info about an asset."""
+        return self.repository.get_asset_by_path(db_path, path)
 
     def inspect_asset_file(
         self,
@@ -42,8 +47,10 @@ class AssetsUseCases:
         
         try:
             with zipfile.ZipFile(assets_zip_path, 'r') as z:
-                if asset_path in z.namelist():
-                    with z.open(asset_path) as f:
+                #_ zipfile.ZipFile.open expects a ZIP-style path (forward slashes)
+                zp = asset_path.replace('\\', '/')
+                if zp in z.namelist():
+                    with z.open(zp) as f:
                         return f.read()
         except Exception:
             pass

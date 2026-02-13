@@ -25,13 +25,29 @@ def register(app: FastMCP, config: ConfigProvider, repo: AssetsRepository):
         if not db_path.exists():
             return json.dumps({"error": "db_not_found", "message": f"Assets database for {norm_version} not found."}, ensure_ascii=False)
         
+        #_ search_assets now needs db_path
         results = use_cases.search_assets(db_path, query, limit)
+        
+        #_ Format results for better readability in MCP
+        formatted = []
+        for a in results:
+            item = {
+                "path": a.path,
+                "category": a.category,
+                "internal_id": a.internal_id,
+                "extension": a.extension,
+                "size_bytes": a.size
+            }
+            if a.width and a.height:
+                item["dimensions"] = f"{a.width}x{a.height}"
+            formatted.append(item)
+
         return json.dumps({
             "version": norm_version,
             "query": query,
-            "count": len(results),
-            "results": results
-        }, ensure_ascii=False)
+            "count": len(formatted),
+            "results": formatted
+        }, ensure_ascii=False, indent=2)
 
     def prism_inspect_asset(
         asset_path: str,
@@ -39,26 +55,46 @@ def register(app: FastMCP, config: ConfigProvider, repo: AssetsRepository):
     ) -> str:
         """Extracts the content of an asset. For text files returns string, for binary returns base64."""
         norm_version = normalize_version(version)
+        db_path = config_impl.get_assets_db_path(None, norm_version)
+        
+        #_ We get info from DB first to see metadata/category
+        info = None
+        if db_path.exists():
+            info = use_cases.get_asset_info(db_path, asset_path)
+        
         assets_zip = config_impl.get_assets_zip_path(None, norm_version)
-        
         if not assets_zip or not assets_zip.exists():
-            return json.dumps({"error": "assets_not_found", "message": f"Assets.zip for {norm_version} not found."}, ensure_ascii=False)
-        
+             return json.dumps({"error": "assets_not_found", "message": f"Assets.zip for {norm_version} not found."}, ensure_ascii=False)
+
         data = use_cases.inspect_asset_file(assets_zip, asset_path)
         if data is None:
             return json.dumps({"error": "asset_not_found", "message": f"Asset {asset_path} not found in {norm_version}."}, ensure_ascii=False)
         
+        result = {
+            "path": asset_path,
+            "version": norm_version,
+            "category": info.category if info else None,
+            "internal_id": info.internal_id if info else None,
+        }
+        
+        if info and info.width and info.height:
+            result["dimensions"] = f"{info.width}x{info.height}"
+
         #_ Try to decode as UTF-8, if fails, return base64
         try:
             content = data.decode('utf-8')
-            return json.dumps({"path": asset_path, "version": norm_version, "content": content, "encoding": "utf-8"}, ensure_ascii=False)
+            result["content"] = content
+            result["encoding"] = "utf-8"
         except UnicodeDecodeError:
             b64 = base64.b64encode(data).decode('ascii')
-            return json.dumps({"path": asset_path, "version": norm_version, "content": b64, "encoding": "base64"}, ensure_ascii=False)
+            result["content"] = b64
+            result["encoding"] = "base64"
+        
+        return json.dumps(result, ensure_ascii=False, indent=2)
 
     #_ Set descriptions from i18n
-    prism_search_assets.__doc__ = "Search Hytale assets by path or metadata (JSON content). Returns matching files with path, extension and size."
-    prism_inspect_asset.__doc__ = "Extracts the content of a specific asset from Assets.zip. Returns the content as a string if text or base64 if binary."
+    prism_search_assets.__doc__ = "Busca assets de Hytale por ruta, ID interno (en JSONs) o categoría (ej: Block, AmbienceFX). Retorna dimensiones para imágenes."
+    prism_inspect_asset.__doc__ = "Inspecciona el contenido de un asset. Devuelve el contenido (texto o base64) junto con metadatos técnicos y categoría detectada."
     
     app.tool()(prism_search_assets)
     app.tool()(prism_inspect_asset)

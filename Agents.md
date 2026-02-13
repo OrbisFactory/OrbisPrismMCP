@@ -53,7 +53,7 @@ Preferred command: **`prism ctx init --assets`**.
 Common commands:
 - `prism ctx list`
 - `prism query "SomeClass"`
-- `prism ctx assets search "stone"`
+- `prism query --assets "stone"`
 - `prism mcp`
 
-If you are modifying the CLI, MCP, or configuration, it is recommended to read the files in this order: `entrypoints/cli/main.py`, `entrypoints/cli/context.py`, `entrypoints/mcp_server.py`, `infrastructure/config_impl.py`.
+If you are modifying the CLI, MCP, or configuration, it is recommended to read the files in this order: `entrypoints/cli/main.py`, `entrypoints/cli/context.py`, `entrypoints/mcp/main.py`, `infrastructure/config_impl.py`.
