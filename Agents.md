@@ -8,7 +8,7 @@ Always consult this file when working in this repository to get project context.
 
 An engineering tool for **Hytale** modding. It takes the official server (`HytaleServer.jar`), decompiles it with JADX (or Vineflower), isolates the `com.hypixel.hytale` core (via JAR slimming), indexes classes and methods into an SQLite database with FTS5, and exposes that API via a **CLI** and an **MCP server** for agents (like Cursor, Claude, etc.) to query the API without "hallucinating."
 
-- **Project Folder:** `orbis-prism/`
+- **Project Folder:** `OrbisPrismMCP/`
 - **Entry Point:** `prism` (Global command) or `python main.py` (Local development).
 - **Stack:** Python 3.11+, JADX/Vineflower, SQLite (FTS5), main dependency `mcp>=1.0.0`.
 

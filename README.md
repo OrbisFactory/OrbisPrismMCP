@@ -18,7 +18,7 @@
 1. **Install**
    Install directly from PyPI:
    ```bash
-   pip install orbis-prism
+   pip install orbis_prism_mcp
    ```
    *(Or for local development: `pip install -e .`)*
 

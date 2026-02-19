@@ -9,7 +9,7 @@ from . import config_impl
 
 def clean_db(root: Path | None = None) -> None:
     """
-    Deletes the SQLite databases from the workspace (prism_api_release.db and prism_api_prerelease.db).
+    Deletes the SQLite databases from the workspace (prism_api_*.db and prism_assets_*.db).
     Does not delete other files from the db directory.
     """
     root = root or config_impl.get_project_root()
@@ -17,9 +17,15 @@ def clean_db(root: Path | None = None) -> None:
     if not db_dir.is_dir():
         return
     for version in VALID_SERVER_VERSIONS:
+        # Delete API DB
         db_path = config_impl.get_db_path(root, version)
         if db_path.is_file():
             db_path.unlink()
+            
+        # Delete Assets DB
+        assets_db_path = config_impl.get_assets_db_path(root, version)
+        if assets_db_path.is_file():
+            assets_db_path.unlink()
 
 
 def clean_build(root: Path | None = None) -> None:

@@ -51,34 +51,26 @@ VINEFLOWER_JAR_NAME = f"vineflower-{VINEFLOWER_VERSION}.jar"
 
 
 def get_project_root(override_root: Path | str | None = None, allow_global: bool = True) -> Path:
-    """Project root: folder containing .prism.json, or fallback to global home."""
+    """Project root: defaults to global .prism directory unless overridden."""
     # 0. Override from parameter
     if override_root:
         p = Path(override_root).resolve()
-        if p.is_dir():
-            return p
+        return p
             
     # 1. Check environment variable
     env_root = os.environ.get(ENV_WORKSPACE)
     if env_root:
         p = Path(env_root).resolve()
-        if p.is_dir():
-            return p
+        return p
             
-    # 2. Search upwards for .prism.json starting from CWD
-    current = Path.cwd().resolve()
-    while current != current.parent:
-        if (current / CONFIG_FILENAME).exists():
-            return current
-        current = current.parent
-        
-    # 3. Fallback
-    if allow_global:
-        global_home = Path.home() / ".prism"
-        return global_home.resolve()
-    else:
-        # Default to CWD if we are for example initializing a new project
-        return Path.cwd().resolve()
+    # 2. Default to global home (Windows/Linux/Mac compatible)
+    global_home = Path.home() / ".prism"
+    
+    # Ensure the directory exists if we are defaulting to it? 
+    # No, _ensure_dirs handles creation usually, but for config loading it might be needed.
+    # But get_project_root just returns the path.
+    
+    return global_home.resolve()
 
 
 def get_workspace_dir(root: Path | None = None) -> Path:
