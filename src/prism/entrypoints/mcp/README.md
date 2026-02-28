@@ -29,12 +29,13 @@ Ideal for local development in AI agents like **OpenCode**, **Cursor**, **VSCode
 
 **OpenCode / Cursor / VSCode JSON Format:**
 ```json
-"OrbisPrismMCP": {
-  "command": "python",
-  "args": [
-    "-m", "prism", "mcp"
-  ],
-  "cwd": "/path/to/your/workspace"
+{
+  "OrbisPrismMCP": {
+    "command": "prism",
+    "args": [
+      "mcp"
+    ]
+  }
 }
 ```
 

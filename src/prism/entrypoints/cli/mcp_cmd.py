@@ -23,45 +23,16 @@ def _get_client_configs(root: Path) -> Dict[str, Dict[str, Any]]:
     """
     cwd = str(root.resolve())
     
-    # Use sys.executable -m prism for maximum reliability across environments
-    command = sys.executable
-    args = ["-m", "prism", "mcp"]
+    # Simplified command as requested by user
+    command = "prism"
+    args = ["mcp"]
     
     return {
-        "OpenCode": {
+        "Standard": {
             "name": i18n.t("cli.mcp.client_opencode"),
             "command": command,
             "args": args,
-            "cwd": cwd,
             "type": "json"
-        },
-        "Cursor": {
-            "name": i18n.t("cli.mcp.client_cursor"),
-            "command": command,
-            "args": args,
-            "cwd": cwd,
-            "type": "json"
-        },
-        "VSCode": {
-            "name": i18n.t("cli.mcp.client_vscode"),
-            "command": command,
-            "args": args,
-            "cwd": cwd,
-            "type": "json"
-        },
-        "Antigravity": {
-            "name": i18n.t("cli.mcp.client_antigravity"),
-            "command": command,
-            "args": args,
-            "cwd": cwd,
-            "type": "json"
-        },
-        "Gemini": {
-            "name": i18n.t("cli.mcp.client_gemini"),
-            "command": command,
-            "args": args,
-            "cwd": cwd,
-            "type": "command"
         }
     }
 
@@ -105,9 +76,10 @@ def mcp_callback(
                 if cfg["type"] == "json":
                     # For clients like Cursor, VSCode, OpenCode, we use a standard JSON snippet
                     config_snippet = {
-                        "command": cfg["command"],
-                        "args": cfg["args"],
-                        "cwd": cfg["cwd"]
+                        "OrbisPrismMCP": {
+                            "command": cfg["command"],
+                            "args": cfg["args"]
+                        }
                     }
                     formatted = json.dumps(config_snippet, indent=2)
                 else:
