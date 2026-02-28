@@ -22,54 +22,25 @@ python main.py mcp [OPTIONS]
 The server supports two main communication modes: **stdio** (direct) and **SSE** (remote).
 
 ### 1. Direct Connection (stdio)
-Ideal for local development in AI agents like Cursor or Claude Desktop.
+Ideal for local development in AI agents like **OpenCode**, **Cursor**, **VSCode (Cline/Roo)**, or **Claude Desktop**.
 
-**Antigravity Configuration Example:**
+> [!TIP]
+> **Dynamic Configuration Helper**: To get the exact configuration for your specific machine, run `prism mcp` in your terminal. It will detect your Python environment and project paths and generate a ready-to-use JSON block for all major clients.
+
+**OpenCode / Cursor / VSCode JSON Format:**
 ```json
 "OrbisPrismMCP": {
-  "command": "C:\\path\\to\\python.exe",
-  "args": [
-    "C:\\path\\to\\OrbisPrismMCP\\main.py",
-    "mcp"
-  ],
-  "env": {
-    "PRISM_WORKSPACE": "C:\\path\\to\\OrbisPrismMCP"
-  },
-  "disabled": false
-}
-```
-
-**Cursor Configuration Example:**
-```json
-"OrbisPrismMCP": {
-  "type": "stdio",
   "command": "python",
   "args": [
-    "C:\\path\\to\\OrbisPrismMCP\\main.py",
-    "mcp"
+    "-m", "prism", "mcp"
   ],
-  "env": {
-    "TRANSPORT": "stdio",
-    "PRISM_WORKSPACE": "C:\\path\\to\\OrbisPrismMCP"
-  }
+  "cwd": "/path/to/your/workspace"
 }
 ```
 
 ### 2. Remote Connection (SSE)
-Use this if the server is running on a different machine or inside Docker. Start the server with `python main.py mcp --http`.
+Use this if the server is running on a different machine or inside Docker. Start the server with `prism mcp --http`.
 
-**Remote Configuration Example:**
-```json
-"OrbisPrismMCP-SSH": {
-  "command": "npx",
-  "args": [
-    "mcp-remote",
-    "http://127.0.0.1:8000/sse"
-  ],
-  "env": {},
-  "disabled": false
-}
-```
 
 ---
 
