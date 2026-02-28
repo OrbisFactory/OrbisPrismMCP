@@ -4,7 +4,9 @@ The primary entry point is the global `prism` command. For local development, yo
 
 ## Global Options
 - **`--workspace` / `-w <PATH>`**: Explicitly set the Hytale project directory.
+- **`--version` / `-v`**: Show the current version of the Orbis Prism CLI.
 - **`--help`**: Show available commands and options.
+
 
 ## `context` / `ctx` Commands
 
