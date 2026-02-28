@@ -43,9 +43,18 @@
 
 ---
 
+## 🏗️ Default Storage
+
+By default, Orbis Prism uses a global storage directory at **`~/.prism`** for configuration and databases. 
+
+If you want to use a specific directory as a workspace (local project), initialize it using `prism ctx init` within that folder or use the `-w` flag.
+
+---
+
 ## 🏛️ Project Features
 
 - **Global CLI**: Run `prism` from any directory.
+- **Global Options**: Use `--version` or `-v` to check the tool version.
 - **Decompiler Choice**: Switch between **JADX** (default) and **Vineflower** engines.
 - **Deep Indexing**: Fast API search with SQLite FTS5.
 - **Asset Exploration**: Search and inspect Hytale assets (JSON, models, textures) directly from `Assets.zip`.

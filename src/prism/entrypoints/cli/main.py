@@ -6,7 +6,7 @@ from typing_extensions import Annotated
 
 import typer
 
-from ... import i18n
+from ... import i18n, __version__
 from ...infrastructure import config_impl
 
 from . import branding
@@ -33,9 +33,16 @@ try:
 except ImportError:
     pass
 
+def version_callback(value: bool):
+    """Callback for the --version flag."""
+    if value:
+        #_ Logo is already printed in main(), so we just exit
+        raise typer.Exit()
+
 @app.callback()
 def main_callback(
     ctx: typer.Context,
+    version: Annotated[bool | None, typer.Option("--version", "-v", callback=version_callback, is_eager=True, help=i18n.t("cli.help.version"))] = None,
     workspace: Annotated[Path | None, typer.Option("--workspace", "-w", help="Path to the Hytale project workspace")] = None,
 ):  
     """Sets the project root context."""
@@ -43,7 +50,7 @@ def main_callback(
     allow_global = True
 
     ctx.ensure_object(dict)
-    root = config_impl.get_project_root(override_root=workspace, allow_global=allow_global)
+    root = config_impl.get_project_root(override_root=workspace)
     ctx.obj["root"] = root
     
 

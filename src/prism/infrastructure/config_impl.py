@@ -51,19 +51,17 @@ VINEFLOWER_JAR_NAME = f"vineflower-{VINEFLOWER_VERSION}.jar"
 
 
 def get_project_root(override_root: Path | str | None = None, allow_global: bool = True) -> Path:
-    """Project root: folder containing .prism.json, or fallback to global home."""
+    """Project root: defaults to global .prism directory unless overridden."""
     # 0. Override from parameter
     if override_root:
         p = Path(override_root).resolve()
-        if p.is_dir():
-            return p
+        return p
             
     # 1. Check environment variable
     env_root = os.environ.get(ENV_WORKSPACE)
     if env_root:
         p = Path(env_root).resolve()
-        if p.is_dir():
-            return p
+        return p
             
     # 2. Search upwards for .prism.json starting from CWD
     current = Path.cwd().resolve()

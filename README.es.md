@@ -43,9 +43,18 @@
 
 ---
 
+## 🏗️ Almacenamiento por Defecto
+
+Por defecto, Orbis Prism utiliza un directorio global en **`~/.prism`** para la configuración y las bases de datos. 
+
+Si deseas utilizar un directorio específico como espacio de trabajo (proyecto local), inicialízalo con `prism ctx init` dentro de esa carpeta o utiliza el flag `-w`.
+
+---
+
 ## 🏛️ Características del Proyecto
 
 - **CLI Global**: Ejecuta `prism` desde cualquier directorio.
+- **Opciones Globales**: Usa `--version` o `-v` para ver la versión de la herramienta.
 - **Elección de Descompilador**: Cambia entre motores **JADX** (por defecto) y **Vineflower**.
 - **Indexación Profunda**: Búsqueda rápida de la API con SQLite FTS5.
 - **Exploración de Assets**: Busca e inspecciona assets de Hytale (JSON, modelos, texturas) directamente desde `Assets.zip`.

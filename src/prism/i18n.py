@@ -55,7 +55,7 @@ def _normalize_locale(locale: str) -> str:
     return part if part else DEFAULT_LOCALE
 
 
-def t(key: str, **kwargs: str) -> str:
+def t(key: str, **kwargs: object) -> str:
     """
     Translate the key to the current locale. If the value is empty, use the one from es.
     kwargs replaces {name} placeholders in the string.
