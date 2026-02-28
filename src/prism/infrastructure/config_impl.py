@@ -75,6 +75,7 @@ def get_project_root(override_root: Path | str | None = None, allow_global: bool
     # 3. Fallback
     if allow_global:
         global_home = Path.home() / ".prism"
+        global_home.mkdir(parents=True, exist_ok=True)
         return global_home.resolve()
     else:
         # Default to CWD if we are for example initializing a new project

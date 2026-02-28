@@ -28,6 +28,7 @@ app = typer.Typer(help=i18n.t("cli.context.help"))
 
 def _ensure_dirs(root: Path) -> None:
     """Ensures that the workspace, sources, db, and logs directories exist."""
+    root.mkdir(parents=True, exist_ok=True)
     config_impl.get_workspace_dir(root).mkdir(parents=True, exist_ok=True)
     #_ server dir is not used, avoiding creation
     config_impl.get_sources_dir(root).mkdir(parents=True, exist_ok=True)
