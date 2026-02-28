@@ -40,8 +40,8 @@ def main_callback(
 ):  
     """Sets the project root context."""
     #_ Determine if we allow global fallback (~/.prism)
-    #_ By default, we use global fallback unless a workspace is explicitly provided.
-    
+    allow_global = True
+
     ctx.ensure_object(dict)
     root = config_impl.get_project_root(override_root=workspace)
     ctx.obj["root"] = root

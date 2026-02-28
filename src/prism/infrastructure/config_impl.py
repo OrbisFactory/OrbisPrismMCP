@@ -63,14 +63,21 @@ def get_project_root(override_root: Path | str | None = None, allow_global: bool
         p = Path(env_root).resolve()
         return p
             
-    # 2. Default to global home (Windows/Linux/Mac compatible)
-    global_home = Path.home() / ".prism"
-    
-    # Ensure the directory exists if we are defaulting to it? 
-    # No, _ensure_dirs handles creation usually, but for config loading it might be needed.
-    # But get_project_root just returns the path.
-    
-    return global_home.resolve()
+    # 2. Search upwards for .prism.json starting from CWD
+    current = Path.cwd().resolve()
+    while current != current.parent:
+        if (current / CONFIG_FILENAME).exists():
+            return current
+        current = current.parent
+        
+    # 3. Fallback
+    if allow_global:
+        global_home = Path.home() / ".prism"
+        global_home.mkdir(parents=True, exist_ok=True)
+        return global_home.resolve()
+    else:
+        # Default to CWD if we are for example initializing a new project
+        return Path.cwd().resolve()
 
 
 def get_workspace_dir(root: Path | None = None) -> Path:
