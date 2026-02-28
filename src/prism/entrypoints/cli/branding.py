@@ -1,8 +1,10 @@
 import sys
 from rich.console import Console
 from rich.text import Text
+from prism import __version__
 
 #_ Use stderr for branding to avoid polluting stdout (important for MCP/pipes)
+
 console = Console(stderr=True)
 
 # ... (LOGO and VERSION_TEXT constants remain the same)
@@ -15,9 +17,10 @@ LOGO = r"""
 [blue] ╚═════╝ ╚═╝  ╚═╝╚═════╝ ╚═╝╚══════╝╚═╝     ╚═╝  ╚═╝╚═╝╚══════╝╚═╝     ╚═╝[/blue]
 """                                                                     
 
-VERSION_TEXT = "VERSION 1.0.3 | ORBISFACTORY"
+VERSION_TEXT = f"VERSION {__version__} | ORBISFACTORY"
 
 def get_logo_and_version() -> Text:
+
     """Returns the ASCII art logo and version information combined as a Rich Text object."""
     logo_lines = LOGO.strip().split('\n')
     cleaned_logo_lines = [Text.from_markup(line).plain for line in logo_lines]

@@ -14,6 +14,7 @@
   "cli.help.arguments_panel": "Arguments",
   "cli.help.commands_panel": "Commands",
   "cli.help.options_panel": "Options",
+  "cli.help.version": "Show the version and exit.",
   "cli.help.decompile_desc": "Decompiles the JAR and leaves only com.hypixel.hytale. Default: release; --all/-a: all.",
   "cli.help.build_desc": "Decompile and index (overwrites code and DB). Default: release; --all/-a: all.",
   "cli.help.index_desc": "Indexes the code into the SQLite database (FTS5). Default: release; --all/-a: all.",
